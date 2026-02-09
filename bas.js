@@ -1,12 +1,11 @@
 (function() {
     'use strict';
     
-    console.log('=== UATUT Balancer Integration ===');
+    console.log('=== UATUT Plugin v3.0 ===');
     
     var config = {
         name: 'UATUT',
         balancer: 'https://uk.uatut.fun/film/',
-        api_url: 'https://uk.uatut.fun/api/', // Потрібно дізнатися реальний API
         debug: true
     };
     
@@ -14,292 +13,199 @@
         if (config.debug) console.log('[UATUT]', msg);
     }
     
-    // ІНТЕГРАЦІЯ З СИСТЕМОЮ LAMPA
-    // ============================
-    
-    // 1. Реєстрація джерела UATUT в Lampa
-    function registerUatutSource() {
-        log('Реєстрація джерела UATUT...');
-        
-        // Чекаємо, поки завантажиться система джерел Lampa
-        if (!window.Lampa || !Lampa.Sources) {
-            setTimeout(registerUatutSource, 1000);
-            return;
-        }
-        
-        // Перевіряємо, чи вже зареєстровано
-        if (window.uatutRegistered) return;
-        
-        // Створюємо джерело UATUT
-        var UatutSource = {
-            name: config.name,
-            id: 'uatut',
-            type: 'online',
-            icon: '🎬',
-            
-            // Метод для пошуку фільму
-            search: function(movie, callback) {
-                log('Пошук фільму на UATUT:', movie.title);
-                
-                // Формуємо пошуковий запит
-                var query = movie.title;
-                if (movie.year) query += ' ' + movie.year;
-                
-                var searchUrl = config.balancer + '?s=' + encodeURIComponent(query);
-                
-                // Повертаємо результат у форматі Lampa
-                var results = [
-                    {
-                        title: movie.title + ' на UATUT',
-                        year: movie.year || '',
-                        voice: 'UATUT',
-                        quality: 'HD',
-                        url: searchUrl,
-                        balanser: config.name,
-                        time: movie.duration || 'Невідомо',
-                        preview: movie.poster || ''
-                    }
-                ];
-                
-                callback(results);
-            },
-            
-            // Метод для завантаження відео
-            load: function(url, callback) {
-                log('Завантаження відео з UATUT:', url);
-                
-                // Тут буде логіка парсингу сторінки UATUT
-                // Поки що просто відкриваємо сторінку
-                window.open(url, '_blank');
-                
-                callback({
-                    success: true,
-                    message: 'Відкрито на UATUT'
-                });
-            }
-        };
-        
-        // Реєструємо джерело в Lampa
-        try {
-            Lampa.Sources.add(UatutSource);
-            window.uatutRegistered = true;
-            log('Джерело UATUT успішно зареєстровано');
-        } catch (e) {
-            log('Помилка реєстрації:', e);
-        }
-    }
-    
-    // 2. Додавання кнопки UATUT до інтерфейсу
+    // Головна функція - додавання кнопки поруч з "смотреть"
     function addUatutButton() {
-        log('Додавання кнопки UATUT...');
+        log('Шукаємо кнопку "смотреть"...');
         
-        // Шукаємо контейнер з кнопкою "смотреть"
-        var watchButton = document.querySelector('[class*="watch"], [class*="смотреть"], button, .button');
-        
-        if (!watchButton) {
-            setTimeout(addUatutButton, 1000);
-            return;
-        }
-        
-        // Перевіряємо, чи кнопка вже додана
-        if (document.querySelector('.uatut-watch-btn')) {
-            log('Кнопка вже додана');
-            return;
-        }
-        
-        // Створюємо кнопку UATUT
-        var uatutBtn = document.createElement('div');
-        uatutBtn.className = 'uatut-watch-btn';
-        uatutBtn.textContent = 'UATUT';
-        uatutBtn.style.cssText = `
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 10px;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #FF6B00, #FF3D00);
-            color: white;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(255, 107, 0, 0.4);
-            text-transform: uppercase;
-        `;
-        
-        // Ефект при наведенні
-        uatutBtn.onmouseover = function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.boxShadow = '0 6px 16px rgba(255, 107, 0, 0.6)';
-        };
-        
-        uatutBtn.onmouseout = function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '0 4px 12px rgba(255, 107, 0, 0.4)';
-        };
-        
-        // Обробник кліку
-        uatutBtn.onclick = function(e) {
-            e.stopPropagation();
-            openUatutInOnlineTab();
-        };
-        
-        // Додаємо кнопку поруч з "смотреть"
-        try {
-            watchButton.parentNode.insertBefore(uatutBtn, watchButton.nextSibling);
-            log('Кнопка UATUT додана');
-        } catch (e) {
-            log('Помилка додавання кнопки:', e);
-            // Резервний варіант
-            document.body.appendChild(uatutBtn);
-            uatutBtn.style.position = 'fixed';
-            uatutBtn.style.top = '20px';
-            uatutBtn.style.right = '20px';
-            uatutBtn.style.zIndex = '9999';
-        }
-    }
-    
-    // 3. Відкриття UATUT у вкладці "Онлайн"
-    function openUatutInOnlineTab() {
-        log('Відкриття UATUT у вкладці Онлайн...');
-        
-        // Натискаємо кнопку "Онлайн" (якщо вона є)
-        var onlineTab = findOnlineTab();
-        if (onlineTab) {
-            onlineTab.click();
+        // Чекаємо 1 секунду для завантаження сторінки
+        setTimeout(function() {
+            // Шукаємо кнопку "смотреть" на сторінці
+            var watchButton = null;
+            var allElements = document.querySelectorAll('*');
             
-            // Чекаємо відкриття вкладки
-            setTimeout(function() {
-                // Тут має з'явитися вибір джерел
-                showUatutSource();
-            }, 500);
-        } else {
-            // Якщо не знайшли вкладку, просто відкриваємо UATUT
-            var movie = getCurrentMovie();
-            if (movie) {
-                var searchUrl = config.balancer + '?s=' + encodeURIComponent(movie.title + ' ' + (movie.year || ''));
-                window.open(searchUrl, '_blank');
-            }
-        }
-    }
-    
-    // 4. Пошук кнопки "Онлайн"
-    function findOnlineTab() {
-        var elements = document.querySelectorAll('*');
-        for (var i = 0; i < elements.length; i++) {
-            var text = elements[i].textContent || '';
-            if (text.trim() === 'Онлайн') {
-                return elements[i];
-            }
-        }
-        return null;
-    }
-    
-    // 5. Відображення UATUT як джерела
-    function showUatutSource() {
-        log('Відображення UATUT як джерела...');
-        
-        // Шукаємо контейнер з джерелами (Lumex, Filmix, тощо)
-        var sourcesContainer = document.querySelector('[class*="sources"], [class*="source"], .selector, .select');
-        
-        if (!sourcesContainer) {
-            // Чекаємо трохи більше
-            setTimeout(showUatutSource, 1000);
-            return;
-        }
-        
-        // Перевіряємо, чи вже додали UATUT
-        if (sourcesContainer.querySelector('.uatut-source-item')) {
-            return;
-        }
-        
-        // Створюємо елемент UATUT
-        var uatutItem = document.createElement('div');
-        uatutItem.className = 'uatut-source-item';
-        uatutItem.textContent = config.name;
-        uatutItem.style.cssText = `
-            padding: 10px 15px;
-            margin: 5px;
-            background: rgba(255, 107, 0, 0.1);
-            border: 1px solid #FF6B00;
-            border-radius: 10px;
-            color: #FF6B00;
-            font-weight: bold;
-            cursor: pointer;
-            text-align: center;
-        `;
-        
-        uatutItem.onclick = function() {
-            // Завантаження фільму з UATUT
-            loadFromUatut();
-        };
-        
-        // Додаємо до контейнера джерел
-        sourcesContainer.appendChild(uatutItem);
-        log('Елемент UATUT додано до джерел');
-    }
-    
-    // 6. Отримання інформації про поточний фільм
-    function getCurrentMovie() {
-        var movie = {};
-        
-        // Спробуємо з Lampa
-        if (Lampa.Activity && Lampa.Activity.current()) {
-            var card = Lampa.Activity.current().card;
-            if (card) {
-                movie.title = card.title || card.name || '';
-                movie.year = card.release_date || card.first_air_date || '';
-                movie.id = card.id || '';
-                
-                if (movie.year && movie.year.length >= 4) {
-                    movie.year = movie.year.substring(0, 4);
+            for (var i = 0; i < allElements.length; i++) {
+                var el = allElements[i];
+                var text = el.textContent || '';
+                if (text.trim().toLowerCase() === 'смотреть' || 
+                    text.trim().toLowerCase() === 'дивитися' ||
+                    text.trim() === '☝️ смотреть!') {
+                    watchButton = el;
+                    log('Знайдено кнопку: ' + text);
+                    break;
                 }
-                
-                return movie;
+            }
+            
+            if (!watchButton) {
+                log('Кнопку "смотреть" не знайдено, повторна спроба...');
+                setTimeout(addUatutButton, 2000);
+                return;
+            }
+            
+            // Перевіряємо, чи кнопка UATUT вже додана
+            if (document.querySelector('.uatut-button')) {
+                log('Кнопка UATUT вже існує');
+                return;
+            }
+            
+            // Створюємо кнопку UATUT
+            var uatutBtn = document.createElement('div');
+            uatutBtn.className = 'uatut-button';
+            uatutBtn.textContent = config.name;
+            
+            // Стилі як на скріншоті
+            uatutBtn.style.cssText = `
+                display: inline-block;
+                margin-left: 15px;
+                padding: 8px 20px;
+                background: linear-gradient(135deg, #FF6B00, #FF3D00);
+                color: white;
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 14px;
+                cursor: pointer;
+                text-align: center;
+                transition: all 0.3s;
+                box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border: none;
+                outline: none;
+                line-height: normal;
+                vertical-align: middle;
+            `;
+            
+            // Ефект при наведенні
+            uatutBtn.onmouseover = function() {
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 6px 15px rgba(255, 107, 0, 0.5)';
+            };
+            
+            uatutBtn.onmouseout = function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 4px 10px rgba(255, 107, 0, 0.3)';
+            };
+            
+            // Обробник кліку
+            uatutBtn.onclick = function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                openUatutSearch();
+            };
+            
+            // Додаємо кнопку поруч з "смотреть"
+            try {
+                // Спробуємо додати в той же контейнер
+                if (watchButton.parentNode) {
+                    watchButton.parentNode.appendChild(uatutBtn);
+                    log('Кнопка UATUT додана поруч з "смотреть"');
+                } else {
+                    // Якщо не вийшло, додаємо після кнопки
+                    watchButton.insertAdjacentElement('afterend', uatutBtn);
+                }
+            } catch (e) {
+                log('Помилка додавання: ' + e);
+                // Резервний варіант
+                watchButton.parentNode.insertBefore(uatutBtn, watchButton.nextSibling);
+            }
+            
+        }, 1000);
+    }
+    
+    // Функція пошуку на UATUT при кліку
+    function openUatutSearch() {
+        log('Запуск пошуку на UATUT...');
+        
+        // Отримуємо назву фільму
+        var movieTitle = '';
+        var movieYear = '';
+        
+        // Шукаємо заголовок фільму
+        var titleElements = document.querySelectorAll('h1, h2');
+        for (var i = 0; i < titleElements.length; i++) {
+            var text = titleElements[i].textContent.trim();
+            if (text && text.length > 2 && text.length < 100) {
+                movieTitle = text;
+                break;
             }
         }
         
-        // Парсимо DOM
-        var titleEl = document.querySelector('h1, h2, [class*="title"]');
-        if (titleEl) movie.title = titleEl.textContent.trim();
-        
-        return movie;
-    }
-    
-    // 7. Завантаження з UATUT
-    function loadFromUatut() {
-        var movie = getCurrentMovie();
-        if (!movie.title) {
-            alert('Не вдалося отримати інформацію про фільм');
-            return;
+        // Якщо не знайшли, шукаємо інші елементи
+        if (!movieTitle) {
+            var otherTitles = document.querySelectorAll('[class*="title"], [class*="name"]');
+            for (var j = 0; j < otherTitles.length; j++) {
+                var text = otherTitles[j].textContent.trim();
+                if (text && text.length > 2) {
+                    movieTitle = text;
+                    break;
+                }
+            }
         }
         
-        var searchUrl = config.balancer + '?s=' + encodeURIComponent(movie.title + ' ' + (movie.year || ''));
+        // Шукаємо рік
+        var yearMatch = document.body.textContent.match(/\b(19|20)\d{2}\b/);
+        if (yearMatch) {
+            movieYear = yearMatch[0];
+        }
         
-        log('Завантаження з UATUT:', searchUrl);
-        
-        // Відкриваємо пошук
-        window.open(searchUrl, '_blank');
-        
-        // Альтернативно: можна спробувати парсинг прямо тут
-        // fetchUatutResults(searchUrl);
+        // Формуємо URL для пошуку
+        if (movieTitle) {
+            var searchQuery = movieTitle;
+            if (movieYear) {
+                searchQuery += ' ' + movieYear;
+            }
+            
+            var encodedQuery = encodeURIComponent(searchQuery);
+            var searchUrl = config.balancer + '?s=' + encodedQuery;
+            
+            log('Пошуковий запит: ' + searchQuery);
+            log('URL: ' + searchUrl);
+            
+            // Відкриваємо пошук у новому вікні
+            window.open(searchUrl, '_blank');
+            
+            // Показуємо повідомлення
+            showNotification('Пошук "' + searchQuery + '" на UATUT...');
+        } else {
+            log('Не вдалося отримати назву фільму');
+            showNotification('Не вдалося отримати інформацію про фільм');
+        }
     }
     
-    // 8. Основний ініціалізатор
+    // Показ повідомлення
+    function showNotification(text) {
+        // Спробуємо використати Lampa Noty
+        if (window.Lampa && Lampa.Noty && Lampa.Noty.show) {
+            Lampa.Noty.show(text);
+        } else {
+            // Резервний варіант
+            alert(text);
+        }
+    }
+    
+    // Ініціалізація плагіна
     function initPlugin() {
         log('Ініціалізація плагіна...');
         
-        // Реєструємо джерело
-        registerUatutSource();
-        
-        // Додаємо кнопку
-        setTimeout(addUatutButton, 2000);
-        
-        // Спостерігаємо за змінами
-        var observer = new MutationObserver(function() {
+        // Додаємо кнопку при завантаженні сторінки
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                addUatutButton();
+            });
+        } else {
             addUatutButton();
-            showUatutSource();
+        }
+        
+        // Додаткова спроба через 3 секунди
+        setTimeout(addUatutButton, 3000);
+        
+        // Спостерігаємо за змінами DOM (для SPA)
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length > 0) {
+                    // Перевіряємо, чи додали нові елементи
+                    setTimeout(addUatutButton, 500);
+                }
+            });
         });
         
         observer.observe(document.body, {
@@ -310,20 +216,14 @@
         log('Плагін ініціалізовано');
     }
     
-    // ЗАПУСК
-    // ======
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initPlugin);
-    } else {
-        initPlugin();
-    }
+    // Запуск плагіна
+    initPlugin();
     
     // Експорт для тестування
-    window.UATUT_PLUGIN = {
-        config: config,
-        init: initPlugin,
-        search: loadFromUatut
+    window.UATUT = {
+        addButton: addUatutButton,
+        search: openUatutSearch,
+        version: '3.0'
     };
     
     console.log('=== UATUT Plugin Loaded ===');
