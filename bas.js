@@ -4,33 +4,62 @@
   // Конфігурація плагіна
   var PluginConfig = {
     name: 'UATUT Balancer',
-    version: '1.0',
+    version: '1.1',
     balancer_url: 'https://uk.uatut.fun/film/',
-    github_raw: 'https://raw.githubusercontent.com/jordg888/ua/main/bas.js',
-    author: 'jordg888'
+    github_raw: 'https://raw.githubusercontent.com/jordg888/ua/main/uatut-balancer.js'
   };
 
   // Унікальний ID користувача
   var getUserId = function() {
     var uid = Lampa.Storage.get('uatut_user_id', '');
     if (!uid) {
-      uid = 'uatut_' + Lampa.Utils.uid(8).toLowerCase();
+      uid = 'uatut_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
       Lampa.Storage.set('uatut_user_id', uid);
     }
     return uid;
   };
 
-  // Перевірка наявності Lampa
-  if (!window.Lampa) {
-    console.error('Lampa не знайдено! Плагін UATUT не може бути ініціалізований.');
-    return;
-  }
+  // Перевірка, чи ми на сторінці фільму/серіалу
+  var isMoviePage = function() {
+    var path = window.location.pathname;
+    return path.includes('/movie/') || 
+           path.includes('/tv/') || 
+           document.querySelector('[class*="card-"][class*="movie"], [class*="card-"][class*="tv"]') ||
+           document.querySelector('.movie-card, .tv-card, .card-wrapper');
+  };
+
+  // Отримання інформації про поточний фільм
+  var getCurrentMovieInfo = function() {
+    var movie = null;
+    
+    // Спробуємо отримати з Lampa Activity
+    if (Lampa.Activity && Lampa.Activity.current() && Lampa.Activity.current().card) {
+      movie = Lampa.Activity.current().card;
+    }
+    
+    // Якщо не вийшло, спробуємо знайти в DOM
+    if (!movie) {
+      var titleElem = document.querySelector('h1, h2, [class*="title"], [class*="name"]');
+      var yearElem = document.querySelector('[class*="year"], [class*="date"]');
+      
+      if (titleElem) {
+        movie = {
+          title: titleElem.textContent.trim(),
+          year: yearElem ? yearElem.textContent.trim() : '',
+          original_title: titleElem.textContent.trim()
+        };
+      }
+    }
+    
+    return movie;
+  };
 
   // Головний клас плагіна
   var UatutPlugin = function() {
     this.name = PluginConfig.name;
     this.version = PluginConfig.version;
     this.initialized = false;
+    this.buttonAdded = false;
   };
 
   // Ініціалізація плагіна
@@ -38,17 +67,15 @@
     if (this.initialized) return this;
     
     console.log('[' + PluginConfig.name + '] Плагін ініціалізовано v' + this.version);
-    console.log('[' + PluginConfig.name + '] Балансер: ' + PluginConfig.balancer_url);
-    console.log('[' + PluginConfig.name + '] User ID: ' + getUserId());
     
     // Додаємо CSS стилі
     this.addStyles();
     
-    // Додаємо кнопку в інтерфейс
-    this.addBalancerButton();
+    // Спостерігаємо за змінами сторінки
+    this.setupPageObserver();
     
-    // Налаштовуємо обробник подій
-    this.setupEventListeners();
+    // Спроба додати кнопку одразу
+    this.tryAddButton();
     
     this.initialized = true;
     return this;
@@ -56,82 +83,179 @@
 
   // Додавання CSS стилів
   UatutPlugin.prototype.addStyles = function() {
-    if (document.querySelector('#uatut-styles')) return;
+    if (document.querySelector('#uatut-balancer-styles')) return;
     
     var style = document.createElement('style');
-    style.id = 'uatut-styles';
+    style.id = 'uatut-balancer-styles';
     style.textContent = `
-      .uatut-balancer-btn {
-        display: flex !important;
+      /* Кнопка балансера */
+      .uatut-balancer-button {
+        display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        margin: 0 8px !important;
-        padding: 8px 16px !important;
-        background: linear-gradient(135deg, #ff6b00 0%, #ff3d00 100%) !important;
+        padding: 10px 20px !important;
+        margin: 10px 5px !important;
+        background: linear-gradient(135deg, #FF6B00 0%, #FF3D00 100%) !important;
         color: white !important;
-        border-radius: 20px !important;
-        cursor: pointer !important;
-        font-weight: 500 !important;
+        border-radius: 25px !important;
+        font-weight: 600 !important;
         font-size: 14px !important;
-        transition: all 0.3s ease !important;
+        cursor: pointer !important;
         border: none !important;
-        min-width: 100px !important;
-        height: 36px !important;
-        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3) !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
       }
       
-      .uatut-balancer-btn:hover {
+      .uatut-balancer-button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 16px rgba(255, 107, 0, 0.5) !important;
-        background: linear-gradient(135deg, #ff7b20 0%, #ff5500 100%) !important;
+        box-shadow: 0 6px 20px rgba(255, 107, 0, 0.6) !important;
+        background: linear-gradient(135deg, #FF7B20 0%, #FF5500 100%) !important;
       }
       
-      .uatut-balancer-btn:active {
+      .uatut-balancer-button:active {
         transform: translateY(0) !important;
-        box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3) !important;
       }
       
-      .uatut-balancer-btn .uatut-icon {
-        margin-right: 6px !important;
+      .uatut-balancer-button .icon {
+        margin-right: 8px !important;
         font-size: 16px !important;
       }
       
+      /* Контейнер для кнопки */
+      .uatut-button-container {
+        display: flex !important;
+        justify-content: center !important;
+        margin: 20px 0 !important;
+        padding: 0 20px !important;
+      }
+      
+      /* Меню */
+      .uatut-menu-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        z-index: 9998 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        backdrop-filter: blur(5px) !important;
+      }
+      
+      .uatut-menu {
+        background: rgba(30, 30, 40, 0.95) !important;
+        border-radius: 15px !important;
+        padding: 0 !important;
+        width: 90% !important;
+        max-width: 500px !important;
+        max-height: 80vh !important;
+        overflow-y: auto !important;
+        border: 1px solid rgba(255, 107, 0, 0.3) !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7) !important;
+        z-index: 9999 !important;
+      }
+      
+      .uatut-menu-header {
+        padding: 20px !important;
+        background: rgba(255, 107, 0, 0.1) !important;
+        border-bottom: 1px solid rgba(255, 107, 0, 0.3) !important;
+        border-radius: 15px 15px 0 0 !important;
+      }
+      
+      .uatut-menu-title {
+        color: #FF6B00 !important;
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        margin-bottom: 5px !important;
+      }
+      
+      .uatut-menu-subtitle {
+        color: rgba(255, 255, 255, 0.7) !important;
+        font-size: 14px !important;
+      }
+      
       .uatut-menu-item {
-        padding: 12px 16px !important;
-        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        padding: 15px 20px !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        cursor: pointer !important;
+        transition: background 0.2s !important;
       }
       
       .uatut-menu-item:hover {
         background: rgba(255, 107, 0, 0.1) !important;
       }
       
-      .uatut-menu-title {
-        color: #ff6b00 !important;
-        font-weight: 600 !important;
+      .uatut-menu-item-title {
+        color: white !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
         margin-bottom: 4px !important;
+        display: flex !important;
+        align-items: center !important;
       }
       
-      .uatut-menu-desc {
-        color: rgba(255,255,255,0.7) !important;
-        font-size: 12px !important;
+      .uatut-menu-item-desc {
+        color: rgba(255, 255, 255, 0.6) !important;
+        font-size: 13px !important;
+      }
+      
+      .uatut-menu-icon {
+        margin-right: 10px !important;
+        font-size: 18px !important;
+      }
+      
+      .uatut-menu-footer {
+        padding: 15px 20px !important;
+        text-align: center !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+      
+      .uatut-close-btn {
+        padding: 8px 25px !important;
+        background: rgba(255, 107, 0, 0.2) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 107, 0, 0.5) !important;
+        border-radius: 20px !important;
+        cursor: pointer !important;
+        font-size: 14px !important;
+        transition: all 0.3s !important;
+      }
+      
+      .uatut-close-btn:hover {
+        background: rgba(255, 107, 0, 0.3) !important;
       }
     `;
     
     document.head.appendChild(style);
   };
 
-  // Пошук правильного місця для кнопки
-  UatutPlugin.prototype.findToolbar = function() {
-    // Спробуємо різні місця, де може бути панель інструментів
+  // Пошук місця для кнопки на сторінці фільму
+  UatutPlugin.prototype.findButtonPlace = function() {
+    // Можливі місця для кнопки на сторінці фільму
     var selectors = [
+      // Кнопки дій (дивитися, в обране тощо)
+      '.buttons-wrapper',
+      '.action-buttons',
+      '.card-buttons',
+      '[class*="button"][class*="group"]',
+      '[class*="actions"]',
+      
+      // Панель інструментів
       '.toolbar',
-      '.navigation',
-      '.player-controls',
-      '.controls',
-      '.header',
-      '.head',
-      '[class*="toolbar"]',
-      '[class*="navigation"]'
+      '.player-toolbar',
+      
+      // Біля опису
+      '.description',
+      '.overview',
+      '.details',
+      
+      // Заголовок
+      '.title-block',
+      '.header-wrapper'
     ];
     
     for (var i = 0; i < selectors.length; i++) {
@@ -141,426 +265,327 @@
       }
     }
     
-    // Якщо не знайшли, створимо власну панель
-    return this.createToolbar();
+    // Якщо не знайшли, шукаємо будь-який контейнер на сторінці фільму
+    var containers = document.querySelectorAll('div, section, article, main');
+    for (var j = 0; j < containers.length; j++) {
+      var container = containers[j];
+      if (container.className && 
+          (container.className.includes('movie') || 
+           container.className.includes('tv') || 
+           container.className.includes('card') ||
+           container.className.includes('detail'))) {
+        return container;
+      }
+    }
+    
+    return null;
   };
 
-  // Створення власної панелі, якщо не знайдено
-  UatutPlugin.prototype.createToolbar = function() {
-    var existingToolbar = document.querySelector('.uatut-toolbar');
-    if (existingToolbar) return existingToolbar;
+  // Додавання кнопки на сторінку фільму
+  UatutPlugin.prototype.addButtonToPage = function() {
+    if (this.buttonAdded || !isMoviePage()) return;
     
-    var toolbar = document.createElement('div');
-    toolbar.className = 'uatut-toolbar';
-    toolbar.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
-      display: flex;
-      gap: 10px;
-      background: rgba(20, 20, 30, 0.9);
-      padding: 10px;
-      border-radius: 10px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 107, 0, 0.3);
-    `;
+    var place = this.findButtonPlace();
+    if (!place) {
+      console.log('[' + PluginConfig.name + '] Не знайдено місце для кнопки');
+      return false;
+    }
     
-    document.body.appendChild(toolbar);
-    return toolbar;
+    // Перевіряємо, чи кнопка вже є
+    if (place.querySelector('.uatut-balancer-button')) {
+      this.buttonAdded = true;
+      return true;
+    }
+    
+    // Створюємо контейнер для кнопки
+    var container = document.createElement('div');
+    container.className = 'uatut-button-container';
+    
+    // Створюємо кнопку
+    var button = document.createElement('button');
+    button.className = 'uatut-balancer-button';
+    button.innerHTML = '<span class="icon">🎬</span> ПОДИВИТИСЯ НА UATUT';
+    
+    var _this = this;
+    button.addEventListener('click', function(e) {
+      e.stopPropagation();
+      _this.openMovieMenu();
+    });
+    
+    container.appendChild(button);
+    
+    // Додаємо кнопку в знайдене місце
+    try {
+      place.appendChild(container);
+      
+      // Альтернативно: додаємо після або перед елементом
+      if (place.nextSibling) {
+        place.parentNode.insertBefore(container, place.nextSibling);
+      } else {
+        place.parentNode.appendChild(container);
+      }
+      
+      console.log('[' + PluginConfig.name + '] Кнопка додана на сторінку фільму');
+      this.buttonAdded = true;
+      return true;
+    } catch (e) {
+      console.error('[' + PluginConfig.name + '] Помилка додавання кнопки:', e);
+      return false;
+    }
   };
 
-  // Додавання кнопки в інтерфейс
-  UatutPlugin.prototype.addBalancerButton = function() {
+  // Спроба додати кнопку
+  UatutPlugin.prototype.tryAddButton = function() {
     var _this = this;
     
-    // Функція для додавання кнопки
-    var addButton = function() {
-      var toolbar = _this.findToolbar();
-      if (!toolbar) {
-        console.log('[' + PluginConfig.name + '] Панель не знайдена, спробуємо пізніше');
-        setTimeout(addButton, 1000);
-        return;
+    // Чекаємо, доки сторінка повністю завантажиться
+    setTimeout(function() {
+      if (isMoviePage()) {
+        _this.addButtonToPage();
       }
-      
-      // Перевіримо, чи вже є наша кнопка
-      if (toolbar.querySelector('.uatut-balancer-btn')) {
-        return;
-      }
-      
-      // Створюємо кнопку
-      var button = document.createElement('button');
-      button.className = 'uatut-balancer-btn';
-      button.innerHTML = '<span class="uatut-icon">🎬</span> UATUT';
-      
-      // Додаємо обробник кліку
-      button.addEventListener('click', function(e) {
-        e.stopPropagation();
-        _this.openBalancerMenu();
-      });
-      
-      // Додаємо кнопку
-      toolbar.appendChild(button);
-      console.log('[' + PluginConfig.name + '] Кнопка додана до інтерфейсу');
-    };
+    }, 2000);
     
-    // Чекаємо завантаження DOM
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', addButton);
-    } else {
-      setTimeout(addButton, 1000);
-    }
+    // Додаткова спроба через 5 секунд
+    setTimeout(function() {
+      if (isMoviePage() && !_this.buttonAdded) {
+        _this.addButtonToPage();
+      }
+    }, 5000);
   };
 
-  // Відкриття меню балансера
-  UatutPlugin.prototype.openBalancerMenu = function() {
+  // Відкриття меню для фільму
+  UatutPlugin.prototype.openMovieMenu = function() {
+    var movie = getCurrentMovieInfo();
+    if (!movie) {
+      this.showMessage('Не вдалося отримати інформацію про фільм');
+      return;
+    }
+    
+    var searchQuery = movie.title || movie.original_title || movie.name;
+    var year = movie.year || movie.release_date || '';
+    if (year && typeof year === 'string' && year.length > 4) {
+      year = year.substring(0, 4);
+    }
+    
+    var fullQuery = searchQuery + (year ? ' ' + year : '');
+    var encodedQuery = encodeURIComponent(fullQuery);
+    var searchUrl = PluginConfig.balancer_url + '?s=' + encodedQuery;
+    
+    // Створюємо меню
+    this.showMovieMenu(searchQuery, year, searchUrl);
+  };
+
+  // Показ меню для фільму
+  UatutPlugin.prototype.showMovieMenu = function(title, year, searchUrl) {
     var _this = this;
     
-    // Отримуємо поточний контент
-    var currentActivity = Lampa.Activity.current();
-    var currentCard = currentActivity ? currentActivity.card : null;
-    
-    // Створюємо елементи меню
-    var menuItems = [];
-    
-    // Якщо є контент, додаємо опції для нього
-    if (currentCard) {
-      var title = currentCard.title || currentCard.name || currentCard.original_title || 'Невідомий контент';
-      var year = currentCard.release_date ? new Date(currentCard.release_date).getFullYear() : 
-                currentCard.first_air_date ? new Date(currentCard.first_air_date).getFullYear() : 
-                currentCard.year || '';
-      
-      menuItems.push({
-        type: 'title',
-        title: 'Поточний контент:',
-        subtitle: title + (year ? ' (' + year + ')' : '')
-      });
-      
-      menuItems.push({
-        title: '🔍 Пошук на UATUT',
-        description: 'Знайти "' + title + '" на балансері',
-        action: function() {
-          _this.searchOnUatut(currentCard);
-        }
-      });
-      
-      menuItems.push({
-        title: '🌐 Відкрити сторінку',
-        description: 'Перейти на сайт балансера',
-        action: function() {
-          window.open(PluginConfig.balancer_url, '_blank');
-        }
-      });
-    }
-    
-    // Загальні опції
-    menuItems.push({
-      title: '⚙️ Налаштування плагіна',
-      description: 'User ID: ' + getUserId(),
-      action: function() {
-        _this.showSettings();
-      }
-    });
-    
-    menuItems.push({
-      title: '📁 Ваш репозиторій',
-      description: PluginConfig.github_raw,
-      action: function() {
-        window.open(PluginConfig.github_raw, '_blank');
-      }
-    });
-    
-    menuItems.push({
-      title: '🔄 Оновити плагін',
-      description: 'Перезавантажити плагін',
-      action: function() {
-        location.reload();
-      }
-    });
-    
-    // Відображення меню
-    this.showCustomMenu(menuItems);
-  };
-
-  // Показ власного меню
-  UatutPlugin.prototype.showCustomMenu = function(items) {
-    // Закриваємо попереднє меню
-    var existingMenu = document.querySelector('.uatut-custom-menu');
-    if (existingMenu) {
-      existingMenu.remove();
-    }
+    // Створюємо overlay
+    var overlay = document.createElement('div');
+    overlay.className = 'uatut-menu-overlay';
     
     // Створюємо меню
     var menu = document.createElement('div');
-    menu.className = 'uatut-custom-menu';
-    menu.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(20, 20, 30, 0.95);
-      border-radius: 12px;
-      padding: 0;
-      width: 400px;
-      max-width: 90vw;
-      max-height: 80vh;
-      overflow-y: auto;
-      z-index: 10000;
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 107, 0, 0.3);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-    `;
+    menu.className = 'uatut-menu';
     
     // Заголовок
     var header = document.createElement('div');
-    header.style.cssText = `
-      padding: 20px;
-      border-bottom: 1px solid rgba(255, 107, 0, 0.3);
-      background: rgba(255, 107, 0, 0.1);
-    `;
+    header.className = 'uatut-menu-header';
     header.innerHTML = `
-      <div style="font-size: 20px; font-weight: 600; color: #ff6b00; margin-bottom: 5px;">
-        ${PluginConfig.name} v${PluginConfig.version}
-      </div>
-      <div style="font-size: 12px; color: rgba(255,255,255,0.7);">
-        Балансер: ${PluginConfig.balancer_url}
-      </div>
+      <div class="uatut-menu-title">${PluginConfig.name}</div>
+      <div class="uatut-menu-subtitle">${title}${year ? ' (' + year + ')' : ''}</div>
     `;
     menu.appendChild(header);
     
-    // Додаємо елементи меню
-    items.forEach(function(item, index) {
-      if (item.type === 'title') {
-        var titleItem = document.createElement('div');
-        titleItem.style.cssText = `
-          padding: 15px 20px;
-          background: rgba(255, 107, 0, 0.05);
-          border-bottom: 1px solid rgba(255,255,255,0.1);
-        `;
-        titleItem.innerHTML = `
-          <div style="color: #ff6b00; font-weight: 500; margin-bottom: 5px;">${item.title}</div>
-          <div style="color: rgba(255,255,255,0.9); font-size: 14px;">${item.subtitle || ''}</div>
-        `;
-        menu.appendChild(titleItem);
-      } else {
-        var menuItem = document.createElement('div');
-        menuItem.className = 'uatut-menu-item';
-        menuItem.style.cssText = `
-          cursor: pointer;
-          transition: background 0.2s;
-        `;
-        menuItem.innerHTML = `
-          <div class="uatut-menu-title">${item.title}</div>
-          <div class="uatut-menu-desc">${item.description || ''}</div>
-        `;
-        
-        menuItem.addEventListener('click', function(e) {
-          e.stopPropagation();
-          if (item.action) item.action();
-          menu.remove();
-        });
-        
-        menu.appendChild(menuItem);
+    // Елементи меню
+    var menuItems = [
+      {
+        icon: '🔍',
+        title: 'Пошук на UATUT',
+        desc: 'Знайти на сайті балансера',
+        action: function() {
+          window.open(searchUrl, '_blank');
+          _this.closeMenu(overlay);
+        }
+      },
+      {
+        icon: '🌐',
+        title: 'Відкрити сайт балансера',
+        desc: PluginConfig.balancer_url,
+        action: function() {
+          window.open(PluginConfig.balancer_url, '_blank');
+          _this.closeMenu(overlay);
+        }
+      },
+      {
+        icon: '📋',
+        title: 'Копіювати посилання',
+        desc: 'Скопіювати URL пошуку',
+        action: function() {
+          navigator.clipboard.writeText(searchUrl).then(function() {
+            _this.showMessage('Посилання скопійовано!');
+            _this.closeMenu(overlay);
+          });
+        }
+      },
+      {
+        icon: '⚙️',
+        title: 'Налаштування плагіна',
+        desc: 'User ID: ' + getUserId(),
+        action: function() {
+          _this.showSettings();
+          _this.closeMenu(overlay);
+        }
       }
+    ];
+    
+    // Додаємо елементи меню
+    menuItems.forEach(function(item) {
+      var menuItem = document.createElement('div');
+      menuItem.className = 'uatut-menu-item';
+      menuItem.innerHTML = `
+        <div class="uatut-menu-item-title">
+          <span class="uatut-menu-icon">${item.icon}</span>
+          ${item.title}
+        </div>
+        <div class="uatut-menu-item-desc">${item.desc}</div>
+      `;
+      
+      menuItem.addEventListener('click', item.action);
+      menu.appendChild(menuItem);
     });
     
-    // Кнопка закриття
+    // Футер з кнопкою закриття
     var footer = document.createElement('div');
-    footer.style.cssText = `
-      padding: 15px 20px;
-      text-align: center;
-      border-top: 1px solid rgba(255,255,255,0.1);
-    `;
+    footer.className = 'uatut-menu-footer';
     
     var closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Закрити';
-    closeBtn.style.cssText = `
-      padding: 8px 24px;
-      background: rgba(255, 107, 0, 0.2);
-      color: white;
-      border: 1px solid rgba(255, 107, 0, 0.5);
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 14px;
-    `;
+    closeBtn.className = 'uatut-close-btn';
+    closeBtn.textContent = 'ЗАКРИТИ';
     closeBtn.addEventListener('click', function() {
-      menu.remove();
+      _this.closeMenu(overlay);
     });
     
     footer.appendChild(closeBtn);
     menu.appendChild(footer);
     
-    // Фон для закриття при кліку поза меню
-    var overlay = document.createElement('div');
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 9999;
-      backdrop-filter: blur(5px);
-    `;
-    
-    overlay.addEventListener('click', function() {
-      menu.remove();
-      overlay.remove();
-    });
-    
+    // Додаємо в DOM
+    overlay.appendChild(menu);
     document.body.appendChild(overlay);
-    document.body.appendChild(menu);
     
-    // Фокус на меню
-    menu.focus();
-  };
-
-  // Пошук на UATUT
-  UatutPlugin.prototype.searchOnUatut = function(card) {
-    var searchQuery = '';
-    
-    // Формуємо запит
-    if (card.title) {
-      searchQuery = card.title + ' ' + (card.year || '');
-    } else if (card.original_title) {
-      searchQuery = card.original_title + ' ' + (card.year || '');
-    } else if (card.name) {
-      searchQuery = card.name + ' ' + (card.year || '');
-    }
-    
-    if (searchQuery) {
-      var encodedQuery = encodeURIComponent(searchQuery);
-      var searchUrl = PluginConfig.balancer_url + '?s=' + encodedQuery;
-      
-      // Показуємо діалог
-      this.showSearchDialog(searchQuery, searchUrl);
-    } else {
-      this.showNotification('Не вдалося сформувати пошуковий запит', 'error');
-    }
-  };
-
-  // Діалог пошуку
-  UatutPlugin.prototype.showSearchDialog = function(query, url) {
-    var dialogItems = [
-      {
-        type: 'title',
-        title: 'Пошук на UATUT',
-        subtitle: 'Запит: ' + query
-      },
-      {
-        title: '🌐 Відкрити в браузері',
-        description: 'Перейти до результатів пошуку',
-        action: function() {
-          window.open(url, '_blank');
-        }
-      },
-      {
-        title: '📋 Копіювати посилання',
-        description: 'Скопіювати URL у буфер обміну',
-        action: function() {
-          navigator.clipboard.writeText(url).then(function() {
-            UatutPlugin.prototype.showNotification('Посилання скопійовано!', 'success');
-          });
-        }
-      },
-      {
-        title: '🎬 Прямий пошук',
-        description: 'Спробувати знайти відео',
-        action: function() {
-          UatutPlugin.prototype.tryDirectSearch(url);
-        }
+    // Закриття при кліку на overlay
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        _this.closeMenu(overlay);
       }
-    ];
-    
-    this.showCustomMenu(dialogItems);
+    });
   };
 
-  // Спроба прямого пошуку
-  UatutPlugin.prototype.tryDirectSearch = function(url) {
-    this.showNotification('Пошук відео...', 'info');
-    
-    // Можна додати реальний парсинг тут
-    setTimeout(function() {
-      UatutPlugin.prototype.showNotification('Функція в розробці. Використовуйте посилання вище.', 'info');
-    }, 1000);
+  // Закриття меню
+  UatutPlugin.prototype.closeMenu = function(overlay) {
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
   };
 
   // Налаштування
   UatutPlugin.prototype.showSettings = function() {
+    var overlay = document.createElement('div');
+    overlay.className = 'uatut-menu-overlay';
+    
+    var menu = document.createElement('div');
+    menu.className = 'uatut-menu';
+    
+    var header = document.createElement('div');
+    header.className = 'uatut-menu-header';
+    header.innerHTML = `
+      <div class="uatut-menu-title">Налаштування</div>
+      <div class="uatut-menu-subtitle">${PluginConfig.name} v${PluginConfig.version}</div>
+    `;
+    menu.appendChild(header);
+    
     var settingsItems = [
       {
-        type: 'title',
-        title: 'Налаштування плагіна',
-        subtitle: PluginConfig.name + ' v' + PluginConfig.version
-      },
-      {
-        title: '👤 Ваш User ID',
-        description: getUserId(),
+        icon: '👤',
+        title: 'Ваш User ID',
+        desc: getUserId(),
         action: function() {
           navigator.clipboard.writeText(getUserId());
-          UatutPlugin.prototype.showNotification('User ID скопійовано!', 'success');
+          alert('User ID скопійовано!');
         }
       },
       {
-        title: '🔗 URL балансера',
-        description: PluginConfig.balancer_url,
+        icon: '🔗',
+        title: 'Балансер UATUT',
+        desc: PluginConfig.balancer_url,
         action: function() {
-          navigator.clipboard.writeText(PluginConfig.balancer_url);
-          UatutPlugin.prototype.showNotification('URL скопійовано!', 'success');
+          window.open(PluginConfig.balancer_url, '_blank');
         }
       },
       {
-        title: '📁 GitHub репозиторій',
-        description: PluginConfig.github_raw,
+        icon: '🔄',
+        title: 'Оновити плагін',
+        desc: 'Перезавантажити сторінку',
         action: function() {
-          window.open(PluginConfig.github_raw, '_blank');
-        }
-      },
-      {
-        title: '🔄 Скинути налаштування',
-        description: 'Очистити всі збережені дані',
-        action: function() {
-          Lampa.Storage.set('uatut_user_id', '');
-          UatutPlugin.prototype.showNotification('Налаштування скинуті! Перезавантажте сторінку.', 'info');
+          location.reload();
         }
       }
     ];
     
-    this.showCustomMenu(settingsItems);
+    settingsItems.forEach(function(item) {
+      var menuItem = document.createElement('div');
+      menuItem.className = 'uatut-menu-item';
+      menuItem.innerHTML = `
+        <div class="uatut-menu-item-title">
+          <span class="uatut-menu-icon">${item.icon}</span>
+          ${item.title}
+        </div>
+        <div class="uatut-menu-item-desc">${item.desc}</div>
+      `;
+      
+      menuItem.addEventListener('click', item.action);
+      menu.appendChild(menuItem);
+    });
+    
+    var footer = document.createElement('div');
+    footer.className = 'uatut-menu-footer';
+    
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'uatut-close-btn';
+    closeBtn.textContent = 'НАЗАД';
+    closeBtn.addEventListener('click', function() {
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    });
+    
+    footer.appendChild(closeBtn);
+    menu.appendChild(footer);
+    
+    overlay.appendChild(menu);
+    document.body.appendChild(overlay);
   };
 
-  // Показ сповіщень
-  UatutPlugin.prototype.showNotification = function(message, type) {
+  // Показ повідомлення
+  UatutPlugin.prototype.showMessage = function(text) {
     if (Lampa.Noty && Lampa.Noty.show) {
-      Lampa.Noty.show(message);
+      Lampa.Noty.show(text);
     } else {
-      // Резервний варіант
-      alert(message);
+      alert(text);
     }
   };
 
-  // Налаштування обробників подій
-  UatutPlugin.prototype.setupEventListeners = function() {
+  // Спостерігач за змінами сторінки
+  UatutPlugin.prototype.setupPageObserver = function() {
     var _this = this;
     
-    // Оновлюємо кнопку при зміні сторінок
-    var originalActivity = Lampa.Activity;
-    if (originalActivity && originalActivity.replace) {
-      var originalReplace = originalActivity.replace;
-      originalActivity.replace = function() {
-        var result = originalReplace.apply(this, arguments);
-        setTimeout(function() {
-          _this.addBalancerButton();
-        }, 500);
-        return result;
-      };
-    }
-    
-    // Додаємо кнопку при зміні DOM
+    // Спостерігаємо за змінами DOM
     var observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length) {
-          _this.addBalancerButton();
+          // Перевіряємо, чи ми на сторінці фільму
+          if (isMoviePage() && !_this.buttonAdded) {
+            _this.addButtonToPage();
+          }
         }
       });
     });
@@ -569,43 +594,50 @@
       childList: true,
       subtree: true
     });
+    
+    // Також слідкуємо за зміною URL (SPA навігація)
+    var lastUrl = location.href;
+    setInterval(function() {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        _this.buttonAdded = false;
+        
+        if (isMoviePage()) {
+          setTimeout(function() {
+            _this.addButtonToPage();
+          }, 1000);
+        }
+      }
+    }, 1000);
   };
 
   // Автоматична ініціалізація
-  var initializePlugin = function() {
-    if (window.Lampa && !window.uatutPluginInstance) {
-      window.uatutPluginInstance = new UatutPlugin().init();
+  var initPlugin = function() {
+    if (!window.Lampa) {
+      console.log('[' + PluginConfig.name + '] Чекаємо завантаження Lampa...');
+      setTimeout(initPlugin, 1000);
+      return;
+    }
+    
+    if (!window.uatutPlugin) {
+      window.uatutPlugin = new UatutPlugin().init();
       
-      // Додаємо інформацію в консоль
-      console.log('%c[UATUT Balancer]%c Плагін успішно завантажено!', 
-        'background: #ff6b00; color: white; padding: 2px 6px; border-radius: 3px;',
-        'color: #ff6b00;'
+      console.log('%c[UATUT Balancer]%c Плагін завантажено!', 
+        'background: #FF6B00; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;',
+        'color: #FF6B00; font-weight: bold;'
       );
-      console.log('%cGitHub:%c ' + PluginConfig.github_raw, 
-        'font-weight: bold;', 
-        'color: #0366d6;'
-      );
+      console.log('Кнопка з\'явиться на сторінці фільму');
     }
   };
 
-  // Запуск ініціалізації
+  // Запуск при завантаженні сторінки
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializePlugin);
+    document.addEventListener('DOMContentLoaded', initPlugin);
   } else {
-    setTimeout(initializePlugin, 1000);
+    initPlugin();
   }
 
   // Резервний запуск
-  var initAttempts = 0;
-  var initInterval = setInterval(function() {
-    if (window.Lampa) {
-      clearInterval(initInterval);
-      initializePlugin();
-    } else if (initAttempts > 10) {
-      clearInterval(initInterval);
-      console.error('Lampa не знайдено після 10 спроб');
-    }
-    initAttempts++;
-  }, 1000);
+  setTimeout(initPlugin, 3000);
 
 })();
