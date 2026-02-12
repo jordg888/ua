@@ -1,231 +1,300 @@
-(function() {
+(function () {
     'use strict';
-    
-    console.log('=== UATUT Final Plugin ===');
-    
-    var config = {
-        name: 'UATUT',
-        url: 'https://uk.uatut.fun/film/'
+
+    /**
+     * Турецькі серіали та фільми / Turkish Series & Movies
+     * Версія: 1.0.0
+     * Опис: Добірки популярних турецьких серіалів (dizi) та фільмів
+     * Основа: плагін Dorama.js
+     */
+
+    var TURKISH_CONFIG = {
+        'turkish': {
+            title: 'Турецькі серіали',
+            icon: `<svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+            </svg>`,
+            categories: [
+                // ────────────────────────────────────────────────
+                // ТУРЕЦЬКІ СЕРІАЛИ (DIZI) — мова: tr
+                // ────────────────────────────────────────────────
+                {
+                    "title": "Популярні турецькі серіали",
+                    "url": "discover/tv",
+                    "params": {
+                        "with_original_language": "tr",
+                        "sort_by": "popularity.desc",
+                        "vote_count.gte": "30"
+                    }
+                },
+                {
+                    "title": "Нові турецькі серіали",
+                    "url": "discover/tv",
+                    "params": {
+                        "with_original_language": "tr",
+                        "sort_by": "first_air_date.desc",
+                        "first_air_date.lte": "{current_date}",
+                        "vote_count.gte": "5"
+                    }
+                },
+                {
+                    "title": "Найкращі турецькі серіали (рейтинг)",
+                    "url": "discover/tv",
+                    "params": {
+                        "with_original_language": "tr",
+                        "sort_by": "vote_average.desc",
+                        "vote_average.gte": "7.5",
+                        "vote_count.gte": "100"
+                    }
+                },
+                {
+                    "title": "Романтичні турецькі серіали",
+                    "url": "discover/tv",
+                    "params": {
+                        "with_original_language": "tr",
+                        "with_genres": "18,10749",
+                        "sort_by": "popularity.desc"
+                    }
+                },
+                {
+                    "title": "Драматичні серіали (Drama)",
+                    "url": "discover/tv",
+                    "params": {
+                        "with_original_language": "tr",
+                        "with_genres": "18",
+                        "sort_by": "popularity.desc"
+                    }
+                },
+                {
+                    "title": "Історичні та бойовики",
+                    "url": "discover/tv",
+                    "params": {
+                        "with_original_language": "tr",
+                        "with_genres": "37,10759",
+                        "sort_by": "popularity.desc"
+                    }
+                },
+                {
+                    "title": "Комедійні серіали",
+                    "url": "discover/tv",
+                    "params": {
+                        "with_original_language": "tr",
+                        "with_genres": "35",
+                        "sort_by": "popularity.desc"
+                    }
+                },
+                // ────────────────────────────────────────────────
+                // ТУРЕЦЬКІ ФІЛЬМИ (кино)
+                // ────────────────────────────────────────────────
+                {
+                    "title": "Популярні турецькі фільми",
+                    "url": "discover/movie",
+                    "params": {
+                        "with_original_language": "tr",
+                        "sort_by": "popularity.desc",
+                        "vote_count.gte": "30"
+                    }
+                },
+                {
+                    "title": "Нові турецькі фільми",
+                    "url": "discover/movie",
+                    "params": {
+                        "with_original_language": "tr",
+                        "sort_by": "release_date.desc",
+                        "release_date.lte": "{current_date}",
+                        "vote_count.gte": "5"
+                    }
+                },
+                {
+                    "title": "Найкращі турецькі фільми (рейтинг)",
+                    "url": "discover/movie",
+                    "params": {
+                        "with_original_language": "tr",
+                        "sort_by": "vote_average.desc",
+                        "vote_average.gte": "7.0",
+                        "vote_count.gte": "50"
+                    }
+                }
+            ]
+        }
     };
-    
-    // Головна функція
-    function init() {
-        // Чекаємо завантаження
-        setTimeout(addUatutButton, 2000);
-        setTimeout(addUatutButton, 4000);
-        setTimeout(addUatutButton, 6000);
-        
-        // Спостереження за змінами
-        var observer = new MutationObserver(function() {
-            addUatutButton();
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-    }
-    
-    // Додавання кнопки UATUT
-    function addUatutButton() {
-        // Шукаємо контейнер з рейтингами
-        var ratingsContainer = findRatingsContainer();
-        
-        if (!ratingsContainer) {
-            console.log('Контейнер рейтингів не знайдений');
-            return;
-        }
-        
-        // Перевіряємо, чи кнопка вже є
-        if (ratingsContainer.querySelector('.uatut-final-btn')) {
-            return;
-        }
-        
-        console.log('Знайдено контейнер рейтингів');
-        
-        // Створюємо кнопку
-        var btn = document.createElement('div');
-        btn.className = 'uatut-final-btn';
-        btn.textContent = config.name;
-        
-        // Стилі як у рейтингів
-        btn.style.cssText = `
-            display: inline-block;
-            margin: 0 8px;
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #FF6B00, #FF3D00);
-            color: white;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.3s;
-            box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
-            text-transform: uppercase;
-            vertical-align: middle;
-            line-height: normal;
-        `;
-        
-        // Ефект при наведенні
-        btn.onmouseover = function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.boxShadow = '0 6px 15px rgba(255, 107, 0, 0.5)';
-            this.style.background = 'linear-gradient(135deg, #FF7B20, #FF5500)';
-        };
-        
-        btn.onmouseout = function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '0 4px 10px rgba(255, 107, 0, 0.3)';
-            this.style.background = 'linear-gradient(135deg, #FF6B00, #FF3D00)';
-        };
-        
-        // При кліку
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            searchOnUatut();
-        };
-        
-        // Додаємо кнопку в контейнер
-        ratingsContainer.appendChild(btn);
-        console.log('Кнопка UATUT додана до рейтингів');
-    }
-    
-    // Пошук контейнера з рейтингами (2.6K, 1K тощо)
-    function findRatingsContainer() {
-        // Шукаємо елементи з рейтингами
-        var ratingTexts = ['2.6K', '1K', '382', '352', '151'];
-        
-        for (var i = 0; i < ratingTexts.length; i++) {
-            var elements = document.querySelectorAll('*');
-            for (var j = 0; j < elements.length; j++) {
-                var el = elements[j];
-                var text = el.textContent || '';
-                
-                if (text.includes(ratingTexts[i])) {
-                    // Знаходимо батьківський контейнер
-                    var parent = el.parentElement;
-                    
-                    // Перевіряємо, чи це контейнер з декількома рейтингами
-                    if (parent) {
-                        var children = parent.children;
-                        var hasMultipleRatings = false;
-                        
-                        for (var k = 0; k < children.length; k++) {
-                            var childText = children[k].textContent || '';
-                            if (/\d+(\.\d+)?[K]?/.test(childText)) {
-                                hasMultipleRatings = true;
-                                break;
-                            }
+
+    // ────────────────────────────────────────────────
+    // КОМПОНЕНТИ (не змінюються, тільки назви класів)
+    // ────────────────────────────────────────────────
+
+    function TurkishMain(object) {
+        var comp = new Lampa.InteractionMain(object);
+        var config = TURKISH_CONFIG[object.service_id];
+
+        comp.create = function () {
+            var _this = this;
+            this.activity.loader(true);
+            var categories = config.categories;
+            var network = new Lampa.Reguest();
+            var status = new Lampa.Status(categories.length);
+
+            status.onComplite = function () {
+                var fulldata = [];
+                Object.keys(status.data).sort(function (a, b) { return a - b; }).forEach(function (key) {
+                    var data = status.data[key];
+                    if (data && data.results && data.results.length) {
+                        var cat = categories[parseInt(key)];
+                        Lampa.Utils.extendItemsParams(data.results, { style: { name: 'wide' } });
+                        fulldata.push({
+                            title: cat.title,
+                            results: data.results,
+                            url: cat.url,
+                            params: cat.params,
+                            service_id: object.service_id
+                        });
+                    }
+                });
+
+                if (fulldata.length) {
+                    _this.build(fulldata);
+                    _this.activity.loader(false);
+                } else {
+                    _this.empty();
+                }
+            };
+
+            categories.forEach(function (cat, index) {
+                var params = [];
+                params.push('api_key=' + Lampa.TMDB.key());
+                params.push('language=' + Lampa.Storage.get('language', 'uk'));
+
+                if (cat.params) {
+                    for (var key in cat.params) {
+                        var val = cat.params[key];
+                        if (val === '{current_date}') {
+                            var d = new Date();
+                            val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
                         }
-                        
-                        if (hasMultipleRatings) {
-                            return parent;
-                        }
+                        params.push(key + '=' + val);
                     }
                 }
-            }
-        }
-        
-        // Якщо не знайшли, шукаємо горизонтальний контейнер
-        var containers = document.querySelectorAll('div');
-        for (var c = 0; c < containers.length; c++) {
-            var container = containers[c];
-            var children = container.children;
-            
-            if (children.length >= 5) {
-                var ratingCount = 0;
-                for (var ch = 0; ch < children.length; ch++) {
-                    var childText = children[ch].textContent || '';
-                    if (/\d+(\.\d+)?[K]?/.test(childText)) {
-                        ratingCount++;
-                    }
-                }
-                
-                if (ratingCount >= 3) {
-                    return container;
-                }
-            }
-        }
-        
-        return null;
+
+                var url = Lampa.TMDB.api(cat.url + '?' + params.join('&'));
+
+                network.silent(url, function (json) {
+                    status.append(index.toString(), json);
+                }, function () {
+                    status.error();
+                });
+            });
+
+            return this.render();
+        };
+
+        comp.onMore = function (data) {
+            Lampa.Activity.push({
+                url: data.url,
+                params: data.params,
+                title: data.title,
+                component: 'turkish_view',
+                page: 1
+            });
+        };
+
+        return comp;
     }
-    
-    // Пошук на UATUT
-    function searchOnUatut() {
-        var movieInfo = getMovieInfo();
-        
-        if (movieInfo.title) {
-            var searchQuery = movieInfo.title;
-            if (movieInfo.year) {
-                searchQuery += ' ' + movieInfo.year;
+
+    function TurkishView(object) {
+        var comp = new Lampa.InteractionCategory(object);
+        var network = new Lampa.Reguest();
+
+        function buildUrl(page) {
+            var params = [];
+            params.push('api_key=' + Lampa.TMDB.key());
+            params.push('language=' + Lampa.Storage.get('language', 'uk'));
+            params.push('page=' + page);
+
+            if (object.params) {
+                for (var key in object.params) {
+                    var val = object.params[key];
+                    if (val === '{current_date}') {
+                        var d = new Date();
+                        val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
+                    }
+                    params.push(key + '=' + val);
+                }
             }
-            
-            var searchUrl = config.url + '?s=' + encodeURIComponent(searchQuery);
-            console.log('UATUT пошук:', searchUrl);
-            
-            window.open(searchUrl, '_blank');
-            
-            // Показуємо повідомлення
-            showNotification('Пошук: ' + searchQuery);
+            return Lampa.TMDB.api(object.url + '?' + params.join('&'));
+        }
+
+        comp.create = function () {
+            var _this = this;
+            network.silent(buildUrl(1), function (json) {
+                _this.build(json);
+            }, this.empty.bind(this));
+        };
+
+        comp.nextPageReuest = function (object, resolve, reject) {
+            network.silent(buildUrl(object.page), resolve, reject);
+        };
+
+        return comp;
+    }
+
+    // ────────────────────────────────────────────────
+    // ЗАПУСК ТА ДОДАВАННЯ В МЕНЮ
+    // ────────────────────────────────────────────────
+
+    function startPlugin() {
+        if (window.plugin_turkish_ready) return;
+        window.plugin_turkish_ready = true;
+
+        Lampa.Component.add('turkish_main', TurkishMain);
+        Lampa.Component.add('turkish_view', TurkishView);
+
+        if (!$('#turkish-css').length) {
+            $('body').append(`
+                <style id="turkish-css">
+                    .turkish_main .card--wide { width: 18.3em !important; }
+                    .turkish_view .card--wide  { width: 18.3em !important; }
+                    .turkish_view .category-full { padding-top: 1em; }
+                </style>
+            `);
+        }
+
+        function addMenuButton() {
+            var menu = $('.menu .menu__list').eq(0);
+            if (!menu.length) return;
+
+            if (menu.find('.menu__item[data-sid="turkish"]').length) return;
+
+            var btn = $(`<li class="menu__item selector" data-action="turkish_action" data-sid="turkish">
+                <div class="menu__ico">${TURKISH_CONFIG.turkish.icon}</div>
+                <div class="menu__text">${TURKISH_CONFIG.turkish.title}</div>
+            </li>`);
+
+            btn.on('hover:enter', function () {
+                Lampa.Activity.push({
+                    title: TURKISH_CONFIG.turkish.title,
+                    component: 'turkish_main',
+                    service_id: 'turkish',
+                    page: 1
+                });
+            });
+
+            menu.append(btn);
+        }
+
+        if (window.appready) {
+            addMenuButton();
         } else {
-            window.open(config.url, '_blank');
+            Lampa.Listener.follow('app', function (e) {
+                if (e.type == 'ready') addMenuButton();
+            });
         }
-    }
-    
-    // Отримання інформації про фільм
-    function getMovieInfo() {
-        var info = { title: '', year: '' };
-        
-        // Заголовок
-        var titleElement = document.querySelector('h1');
-        if (!titleElement) {
-            titleElement = document.querySelector('h2');
-        }
-        
-        if (titleElement) {
-            info.title = titleElement.textContent.trim();
-        }
-        
-        // Рік
-        var allText = document.body.textContent;
-        var yearMatch = allText.match(/\b(19|20)\d{2}\b/);
-        if (yearMatch) {
-            info.year = yearMatch[0];
-        }
-        
-        return info;
-    }
-    
-    // Показ повідомлення
-    function showNotification(text) {
-        var msg = document.createElement('div');
-        msg.textContent = text;
-        msg.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 15px;
-            background: rgba(30, 30, 40, 0.95);
-            color: #FF6B00;
-            border-radius: 10px;
-            z-index: 10000;
-            font-size: 14px;
-            font-weight: bold;
-            border: 1px solid #FF6B00;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-        `;
-        
-        document.body.appendChild(msg);
-        
-        setTimeout(function() {
-            if (msg.parentNode) {
-                msg.parentNode.removeChild(msg);
+
+        setInterval(function () {
+            if (window.appready && $('.menu .menu__list').eq(0).length) {
+                addMenuButton();
             }
-        }, 2000);
+        }, 4000);
     }
-    
-    // Запуск
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-    
+
+    if (!window.plugin_turkish_ready) startPlugin();
 })();
