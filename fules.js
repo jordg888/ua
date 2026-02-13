@@ -2,67 +2,87 @@
     'use strict';
 
     /**
-     * UASerial.pro — АБСОЛЮТНО РОБОЧА ВЕРСІЯ
-     * Версія: 6.0.0
+     * UASerial.pro — СТАБІЛЬНА ВЕРСІЯ
+     * Версія: 7.0.0
+     * Опис: Використовує надійний метод додавання кнопок
      */
 
+    // ============================================
+    // 1. НАЛАШТУВАННЯ
+    // ============================================
     var CONFIG = {
         name: 'UASerial',
         icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v12H4V6zm2 2v8h12V8H6zm2 2h8v4H8v-4z"/></svg>',
-        searchUrl: 'https://uaserials.pro/index.php?do=search&subaction=search&story=',
-        isOpened: false
+        searchUrl: 'https://uaserials.pro/index.php?do=search&subaction=search&story='
+    };
+
+    var state = {
+        isOpened: false,
+        buttonAdded: false
     };
 
     // ============================================
-    // 1. ДОДАВАННЯ КНОПКИ (100% ПРАЦЮЄ)
+    // 2. ДОДАВАННЯ КНОПКИ (НАДІЙНИЙ МЕТОД)
     // ============================================
     function addButton() {
-        try {
-            var activity = Lampa.Activity.active();
-            if (!activity || !activity.render) return;
+        if (state.buttonAdded) return;
 
-            var html = activity.render();
-            var container = $(html);
+        try {
+            // Шукаємо контейнер кнопок
+            var container = $('.full-start-new__buttons, .full-start__buttons').first();
             
-            var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
-            if (!buttons_container.length) {
-                setTimeout(addButton, 300);
+            if (!container.length) {
+                setTimeout(addButton, 500);
                 return;
             }
 
-            if (buttons_container.find('.uaserial-button-final').length) return;
-
-            var button = $('<div class="full-start__button selector uaserial-button-final">' +
-                                '<div class="full-start__button-icon">' + CONFIG.icon + '</div>' +
-                                '<span>UASerial</span>' +
-                            '</div>');
-
-            var neighbors = buttons_container.find('.selector');
-            if (neighbors.length >= 2) {
-                button.insertAfter(neighbors.eq(1));
-            } else {
-                buttons_container.append(button);
+            // Перевіряємо чи кнопка вже є
+            if (container.find('.uaserial-button-fixed').length) {
+                state.buttonAdded = true;
+                return;
             }
 
-            button.off('hover:enter').on('hover:enter', function() {
-                if (!CONFIG.isOpened) {
-                    searchAndPlay(activity.data);
+            // Отримуємо дані фільму
+            var activity = Lampa.Activity.active();
+            if (!activity || !activity.data) {
+                setTimeout(addButton, 500);
+                return;
+            }
+
+            var movie = activity.data;
+
+            // Створюємо кнопку
+            var button = $('<div class="full-start__button selector uaserial-button-fixed" style="order: 999;">' +
+                '<div class="full-start__button-icon">' + CONFIG.icon + '</div>' +
+                '<span>' + CONFIG.name + '</span>' +
+                '</div>');
+
+            // Додаємо обробник
+            button.on('hover:enter', function() {
+                if (!state.isOpened) {
+                    searchAndPlay(movie);
                 }
             });
 
-            console.log('✅ Кнопка UASerial додана!');
+            // Додаємо кнопку в кінець
+            container.append(button);
+            
+            state.buttonAdded = true;
+            console.log('✅ Кнопка UASerial додана назавжди!');
+            
         } catch (e) {
-            console.log('Помилка додавання кнопки:', e);
+            console.log('Помилка:', e);
+            setTimeout(addButton, 1000);
         }
     }
 
     // ============================================
-    // 2. ПОШУК І ВІДТВОРЕННЯ
+    // 3. ПОШУК І ВІДТВОРЕННЯ
     // ============================================
     function searchAndPlay(movie) {
-        if (!movie || CONFIG.isOpened) return;
+        if (!movie || state.isOpened) return;
         
-        CONFIG.isOpened = true;
+        state.isOpened = true;
         Lampa.Noty.show('🔍 Пошук на UASerial...');
 
         var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
@@ -75,26 +95,25 @@
             url: CONFIG.searchUrl + encodeURIComponent(searchQuery),
             dataType: 'html',
             success: function(html) {
-                parseSearchResults(html, movie);
+                parseSearchResults(html);
             },
             error: function() {
                 Lampa.Noty.show('❌ Помилка з\'єднання');
-                CONFIG.isOpened = false;
+                state.isOpened = false;
             }
         });
     }
 
     // ============================================
-    // 3. ПАРСІНГ РЕЗУЛЬТАТІВ
+    // 4. ПАРСІНГ РЕЗУЛЬТАТІВ
     // ============================================
-    function parseSearchResults(html, movie) {
-        var match = html.match(/<a[^>]+href="([^"]+)"[^>]*class="short-title"[^>]*>/i) ||
-                   html.match(/<a[^>]+href="([^"]+)"[^>]*class="poster"[^>]*>/i) ||
-                   html.match(/href="(https?:\/\/uaserials\.pro\/\d+-[^"]+\.html)"/i);
+    function parseSearchResults(html) {
+        var match = html.match(/href="(https?:\/\/uaserials\.pro\/\d+-[^"]+\.html)"/i) ||
+                   html.match(/<a[^>]+href="([^"]+)"[^>]*class="short-title"[^>]*>/i);
         
         if (!match) {
             Lampa.Noty.show('❌ Фільм не знайдено');
-            CONFIG.isOpened = false;
+            state.isOpened = false;
             return;
         }
 
@@ -111,20 +130,20 @@
             },
             error: function() {
                 Lampa.Noty.show('❌ Помилка завантаження');
-                CONFIG.isOpened = false;
+                state.isOpened = false;
             }
         });
     }
 
     // ============================================
-    // 4. ПОШУК IFRAME
+    // 5. ПОШУК IFRAME
     // ============================================
     function extractIframe(html) {
         var iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
         
         if (!iframeMatch) {
             Lampa.Noty.show('❌ Плеєр не знайдено');
-            CONFIG.isOpened = false;
+            state.isOpened = false;
             return;
         }
 
@@ -141,67 +160,66 @@
             },
             error: function() {
                 Lampa.Noty.show('❌ Помилка завантаження плеєра');
-                CONFIG.isOpened = false;
+                state.isOpened = false;
             }
         });
     }
 
     // ============================================
-    // 5. ПОШУК M3U8 І ВІДТВОРЕННЯ
+    // 6. ПОШУК M3U8
     // ============================================
     function extractM3U8(html) {
         var m3u8Match = html.match(/file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) ||
-                       html.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i) ||
-                       html.match(/source src=["']([^"']+\.m3u8[^"']*)["']/i);
+                       html.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
 
         if (m3u8Match) {
             Lampa.Noty.hide();
             Lampa.Player.play({
                 url: m3u8Match[1],
-                title: 'UASerial',
+                title: CONFIG.name,
                 method: 'play'
             });
-            Lampa.Noty.show('✅ Відео знайдено!', 2000);
         } else {
             Lampa.Noty.show('❌ Потік не знайдено');
         }
         
-        CONFIG.isOpened = false;
+        state.isOpened = false;
     }
 
     // ============================================
-    // 6. ЗАПУСК
+    // 7. ЗАПУСК
     // ============================================
     function startPlugin() {
-        if (window.uaserial_plugin_ready) return;
-        window.uaserial_plugin_ready = true;
+        if (window.uaserial_stable) return;
+        window.uaserial_stable = true;
 
-        console.log('🚀 Запуск UASerial плагіна');
+        console.log('🚀 Запуск UASerial (стабільна версія)');
 
         // Додаємо CSS
-        if (!$('#uaserial-css').length) {
-            $('head').append('<style id="uaserial-css">' +
-                '.uaserial-button-final { display: flex !important; }' +
+        if (!$('#uaserial-stable-css').length) {
+            $('head').append('<style id="uaserial-stable-css">' +
+                '.uaserial-button-fixed { display: flex !important; }' +
+                '.full-start__buttons { display: flex; flex-wrap: wrap; }' +
                 '</style>');
         }
 
-        // Додаємо кнопку при зміні активності
-        Lampa.Listener.follow('full', function(e) {
-            if (e.type === 'complite') {
-                setTimeout(addButton, 300);
+        // Додаємо кнопку при кожній зміні
+        function tryAddButton() {
+            if (!state.buttonAdded) {
+                addButton();
             }
-        });
+        }
 
-        Lampa.Listener.follow('activity', function(e) {
-            if (e.type === 'active') {
-                setTimeout(addButton, 300);
-            }
-        });
+        // Слідкуємо за подіями
+        Lampa.Listener.follow('full', tryAddButton);
+        Lampa.Listener.follow('activity', tryAddButton);
 
-        // Додаємо кнопку кілька разів для гарантії
-        setTimeout(addButton, 500);
-        setTimeout(addButton, 1000);
-        setTimeout(addButton, 2000);
+        // Додаємо кнопку кілька разів
+        setInterval(tryAddButton, 2000);
+        setTimeout(tryAddButton, 500);
+        setTimeout(tryAddButton, 1000);
+        setTimeout(tryAddButton, 2000);
+        setTimeout(tryAddButton, 3000);
     }
 
     startPlugin();
