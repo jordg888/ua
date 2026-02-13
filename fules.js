@@ -3,125 +3,123 @@
 
     /**
      * UAKino.pro — СТАНДАРТНЕ МЕНЮ LAMPA
-     * Версія: 3.0.0
+     * Версія: 3.0.1
      */
 
+    // ============================================
+    // 1. НАЛАШТУВАННЯ
+    // ============================================
     var CONFIG = {
         name: 'UAKino',
-        icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v12H4V6zm2 2v8h12V8H6zm2 2h8v4H8v-4z"/></svg>',
-        sources: [
-            {
-                name: 'UAKino',
-                url: 'https://uakino.club/index.php?do=search&subaction=search&story=',
-                baseUrl: 'https://uakino.club'
-            },
-            {
-                name: 'UASerial',
-                url: 'https://uaserials.pro/index.php?do=search&subaction=search&story=',
-                baseUrl: 'https://uaserials.pro'
-            }
-        ]
+        icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v12H4V6zm2 2v8h12V8H6zm2 2h8v4H8v-4z"/></svg>'
     };
 
-    // ============================================
-    // 1. ДОДАВАННЯ КНОПКИ
-    // ============================================
-    function UAKinoPlugin() {
-        this.init = function () {
-            var _this = this;
-            Lampa.Listener.follow('full', function (e) {
-                if (e.type === 'complite') {
-                    setTimeout(function() {
-                        try {
-                            _this.render(e.data, e.object.activity.render());
-                        } catch (err) {}
-                    }, 200);
-                }
-            });
-        };
+    var sources = [
+        {
+            name: 'UAKino',
+            searchUrl: 'https://uakino.club/index.php?do=search&subaction=search&story=',
+            baseUrl: 'https://uakino.club'
+        },
+        {
+            name: 'UASerial',
+            searchUrl: 'https://uaserials.pro/index.php?do=search&subaction=search&story=',
+            baseUrl: 'https://uaserials.pro'
+        }
+    ];
 
-        this.render = function (data, html) {
-            var _this = this;
-            var container = $(html);
+    // ============================================
+    // 2. ДОДАВАННЯ КНОПКИ
+    // ============================================
+    function addButton() {
+        try {
+            var container = $('.full-start-new__buttons, .full-start__buttons').first();
             
-            if (container.find('.lampa-uakino-button').length) return;
-
-            var button = $('<div class="full-start__button selector lampa-uakino-button">' +
-                                '<div class="full-start__button-icon">' + CONFIG.icon + '</div>' +
-                                '<span>' + CONFIG.name + '</span>' +
-                            '</div>');
-
-            var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
-            var neighbors = buttons_container.find('.selector');
-
-            if (neighbors.length >= 2) {
-                button.insertAfter(neighbors.eq(1));
-            } else {
-                buttons_container.append(button);
+            if (!container.length) {
+                setTimeout(addButton, 500);
+                return;
             }
 
-            button.on('hover:enter click', function() {
-                _this.showLampaMenu(data.movie);
+            if (container.find('.custom-source-button').length) return;
+
+            var activity = Lampa.Activity.active();
+            if (!activity || !activity.data) {
+                setTimeout(addButton, 500);
+                return;
+            }
+
+            var button = $('<div class="full-start__button selector custom-source-button">' +
+                '<div class="full-start__button-icon">' + CONFIG.icon + '</div>' +
+                '<span>' + CONFIG.name + '</span>' +
+                '</div>');
+
+            button.on('hover:enter', function() {
+                showSourceMenu(activity.data);
             });
 
-            console.log('✅ Кнопку UAKino додано!');
-        };
-
-        // ============================================
-        // 2. ПОКАЗ СТАНДАРТНОГО МЕНЮ LAMPA
-        // ============================================
-        this.showLampaMenu = function(movie) {
-            if (!movie) return;
-
-            var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
-            var year = (movie.release_date || movie.first_air_date || '').substring(0, 4);
+            container.append(button);
+            console.log('✅ Кнопку додано');
             
-            // Створюємо дані для меню
-            var menuData = {
-                movie: movie,
-                sources: []
-            };
-
-            // Додаємо джерела
-            CONFIG.sources.forEach(function(source) {
-                menuData.sources.push({
-                    name: source.name,
-                    url: source.url + encodeURIComponent(title + ' ' + year),
-                    baseUrl: source.baseUrl,
-                    type: 'search'
-                });
-            });
-
-            // Відкриваємо стандартне меню вибору джерел
-            Lampa.SourcesMenu.open(menuData, {
-                title: 'Виберіть джерело',
-                onSelect: function(source) {
-                    Lampa.Noty.show('🔍 Пошук на ' + source.name + '...');
-                    
-                    $.ajax({
-                        url: source.url,
-                        dataType: 'html',
-                        success: function(html) {
-                            parseAndShowResults(html, source, movie);
-                        },
-                        error: function() {
-                            Lampa.Noty.show('❌ Помилка з\'єднання');
-                        }
-                    });
-                }
-            });
-        };
+        } catch (e) {
+            console.log('Помилка:', e);
+        }
     }
 
     // ============================================
-    // 3. ПАРСІНГ І ПОКАЗ РЕЗУЛЬТАТІВ
+    // 3. ПОКАЗ МЕНЮ
     // ============================================
-    function parseAndShowResults(html, source, movie) {
-        // Шукаємо посилання на фільм
+    function showSourceMenu(movie) {
+        if (!movie) return;
+
+        var menuItems = [];
+        
+        for (var i = 0; i < sources.length; i++) {
+            menuItems.push({
+                title: sources[i].name,
+                source: sources[i]
+            });
+        }
+
+        Lampa.Menu.open({
+            title: 'Виберіть джерело',
+            items: menuItems,
+            onSelect: function(item) {
+                searchOnSource(movie, item.source);
+            }
+        });
+    }
+
+    // ============================================
+    // 4. ПОШУК НА ДЖЕРЕЛІ
+    // ============================================
+    function searchOnSource(movie, source) {
+        var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
+        var year = (movie.release_date || movie.first_air_date || '').substring(0, 4);
+        
+        var searchQuery = title + ' ' + year;
+        var searchUrl = source.searchUrl + encodeURIComponent(searchQuery);
+
+        Lampa.Noty.show('🔍 Пошук на ' + source.name + '...');
+
+        $.ajax({
+            url: searchUrl,
+            dataType: 'html',
+            success: function(html) {
+                parseResults(html, source, movie);
+            },
+            error: function() {
+                Lampa.Noty.show('❌ Помилка з\'єднання');
+            }
+        });
+    }
+
+    // ============================================
+    // 5. ПАРСІНГ РЕЗУЛЬТАТІВ
+    // ============================================
+    function parseResults(html, source, movie) {
         var match = html.match(/<a[^>]+href="([^"]+)"[^>]*class="short-title"[^>]*>/i) ||
                    html.match(/<a[^>]+href="([^"]+)"[^>]*class="poster"[^>]*>/i) ||
                    html.match(/href="(https?:\/\/[^"]+\.html)"/i);
-        
+
         if (!match) {
             Lampa.Noty.show('❌ Фільм не знайдено');
             return;
@@ -136,7 +134,7 @@
             url: movieUrl,
             dataType: 'html',
             success: function(movieHtml) {
-                extractAndPlay(movieHtml, source, movie);
+                extractIframe(movieHtml, source, movie);
             },
             error: function() {
                 Lampa.Noty.show('❌ Помилка завантаження');
@@ -144,10 +142,9 @@
         });
     }
 
-    function extractAndPlay(movieHtml, source, movie) {
-        // Шукаємо iframe плеєра
+    function extractIframe(movieHtml, source, movie) {
         var iframeMatch = movieHtml.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-        
+
         if (!iframeMatch) {
             Lampa.Noty.show('❌ Плеєр не знайдено');
             return;
@@ -162,26 +159,7 @@
             url: iframeUrl,
             dataType: 'html',
             success: function(playerHtml) {
-                // Шукаємо .m3u8
-                var m3u8Match = playerHtml.match(/file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) ||
-                               playerHtml.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
-
-                if (m3u8Match) {
-                    Lampa.Noty.hide();
-                    
-                    // Створюємо об'єкт для відтворення
-                    var playData = {
-                        url: m3u8Match[1],
-                        title: source.name + ' - ' + (movie.title || movie.name),
-                        method: 'play'
-                    };
-
-                    // Відкриваємо плеєр
-                    Lampa.Player.play(playData);
-                    
-                } else {
-                    Lampa.Noty.show('❌ Потік не знайдено');
-                }
+                extractVideo(playerHtml, source, movie);
             },
             error: function() {
                 Lampa.Noty.show('❌ Помилка завантаження плеєра');
@@ -189,24 +167,47 @@
         });
     }
 
+    function extractVideo(playerHtml, source, movie) {
+        var m3u8Match = playerHtml.match(/file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) ||
+                       playerHtml.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
+
+        if (m3u8Match) {
+            Lampa.Noty.hide();
+            
+            Lampa.Player.play({
+                url: m3u8Match[1],
+                title: source.name + ' - ' + (movie.title || movie.name),
+                method: 'play'
+            });
+        } else {
+            Lampa.Noty.show('❌ Відео не знайдено');
+        }
+    }
+
     // ============================================
-    // 4. ЗАПУСК
+    // 6. ЗАПУСК
     // ============================================
     function startPlugin() {
-        if (window.uakino_lampa_menu) return;
-        window.uakino_lampa_menu = true;
+        if (window.uakino_plugin_ready) return;
+        window.uakino_plugin_ready = true;
 
-        console.log('🚀 Запуск UAKino зі стандартним меню Lampa');
+        console.log('🚀 Запуск плагіна');
 
-        if (!$('#uakino-style').length) {
-            $('head').append('<style id="uakino-style">' +
-                '.lampa-uakino-button { display: flex !important; }' +
-                '</style>');
-        }
+        Lampa.Listener.follow('full', function(e) {
+            if (e.type === 'complite') {
+                setTimeout(addButton, 300);
+            }
+        });
 
-        if (window.Lampa) {
-            new UAKinoPlugin().init();
-        }
+        Lampa.Listener.follow('activity', function(e) {
+            if (e.type === 'active') {
+                setTimeout(addButton, 300);
+            }
+        });
+
+        setTimeout(addButton, 500);
+        setTimeout(addButton, 1000);
+        setTimeout(addButton, 2000);
     }
 
     startPlugin();
