@@ -1,253 +1,279 @@
 // ============================================
-// Плагін: Cizari замість постера
+// Плагін: Cizari замість постера (Виправлена версія)
 // Автор: Твоє Ім'я
-// Версія: 1.0
-// Опис: Показує цізери фільмів замість постера на картці фільму
+// Версія: 1.1
+// Опис: Показує цізери фільмів замість постера
 // ============================================
 
-if (typeof window.plugin_cizer_ready !== 'undefined') return;
-window.plugin_cizer_ready = true;
+(function() {
+    // Перевірка чи плагін вже завантажено
+    if (window.pluginCizerLoaded) return;
+    window.pluginCizerLoaded = true;
 
-// Реєструємо плагін
-Lampa.Manifest.plugins.push({
-    name: "Цізери замість постера",
-    version: "1.0",
-    author: "Твоє Ім'я",
-    description: "Автоматично показує цізери фільмів замість постера",
-    icon: "https://cdn-icons-png.flaticon.com/512/1946/1946482.png",
-    id: "cizer_plugin"
-});
+    console.log('🔄 Завантаження плагіна цізерів...');
 
-// Головна логіка плагіна
-function initCizerPlugin() {
-    console.log('🎬 Плагін цізерів активовано');
-    
-    // Слухаємо подію відкриття картки фільму
-    Lampa.Listener.follow('full', function(event) {
-        if (event.type === 'movie' && event.data) {
-            // Затримка, щоб DOM встиг завантажитись
-            setTimeout(() => {
-                replacePosterWithCizer(event.data);
-            }, 500);
-        }
-    });
-}
+    // Функція ініціалізації плагіна
+    function initializeCizerPlugin() {
+        console.log('✅ Плагін цізерів ініціалізовано');
 
-// Функція для пошуку цізера та заміни постера
-function replacePosterWithCizer(movieData) {
-    console.log('🎥 Спроба знайти цізер для:', movieData.title);
-    
-    // Знаходимо контейнер з постером
-    const posterContainer = document.querySelector('.full-start__poster, .movie-poster, .poster--big');
-    
-    if (!posterContainer) {
-        console.log('❌ Контейнер постера не знайдено');
-        return;
-    }
-    
-    // Зберігаємо оригінальний постер (про всяк випадок)
-    const originalPoster = posterContainer.innerHTML;
-    
-    // Показуємо індикатор завантаження
-    posterContainer.innerHTML = `
-        <div style="
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-family: Arial, sans-serif;
-            border-radius: 12px;
-            min-height: 300px;
-        ">
-            <div style="text-align: center;">
-                <div style="font-size: 24px; margin-bottom: 10px;">🎬</div>
-                <div>Завантаження цізера...</div>
-            </div>
-        </div>
-    `;
-    
-    // Шукаємо цізер через YouTube API
-    searchYouTubeCizer(movieData.title, movieData.year)
-        .then(videoUrl => {
-            if (videoUrl) {
-                // Якщо знайшли відео - вставляємо плеєр
-                embedYouTubePlayer(posterContainer, videoUrl);
-            } else {
-                // Якщо не знайшли - показуємо оригінальний постер з повідомленням
-                console.log('⚠️ Цізер не знайдено, повертаємо постер');
-                posterContainer.innerHTML = originalPoster;
+        // Слухаємо зміну активності (відкриття карток)
+        Lampa.Listener.follow('activity', function(activity) {
+            if (activity && activity.data && activity.data.type === 'movie') {
+                console.log('🎬 Відкрито фільм:', activity.data.title);
                 
-                // Додаємо невелику позначку, що цізера немає
-                const badge = document.createElement('div');
-                badge.style.cssText = `
+                // Чекаємо трохи, поки DOM завантажиться
+                setTimeout(function() {
+                    findAndReplacePoster(activity.data);
+                }, 800);
+            }
+        });
+    }
+
+    // Функція пошуку та заміни постера
+    function findAndReplacePoster(movieData) {
+        // Спробуємо різні селектори для постеру
+        const selectors = [
+            '.full-start__poster',
+            '.movie-poster',
+            '.poster--big',
+            '.full-start__poster .poster',
+            '.full-start__poster img',
+            '.media-poster'
+        ];
+        
+        let posterElement = null;
+        
+        for (let selector of selectors) {
+            posterElement = document.querySelector(selector);
+            if (posterElement) {
+                console.log('Знайдено постер за селектором:', selector);
+                break;
+            }
+        }
+        
+        if (!posterElement) {
+            console.log('❌ Постер не знайдено');
+            return;
+        }
+
+        // Зберігаємо оригінал
+        const originalPoster = posterElement.innerHTML;
+        const parentContainer = posterElement.parentElement || posterElement;
+
+        // Показуємо завантаження
+        showLoading(parentContainer, posterElement);
+
+        // Шукаємо цізер
+        searchCizer(movieData)
+            .then(function(videoUrl) {
+                if (videoUrl) {
+                    showVideo(parentContainer, videoUrl);
+                } else {
+                    showOriginalPoster(parentContainer, originalPoster);
+                }
+            })
+            .catch(function(error) {
+                console.error('Помилка:', error);
+                showOriginalPoster(parentContainer, originalPoster);
+            });
+    }
+
+    // Показуємо завантаження
+    function showLoading(container, posterElement) {
+        if (!container || !posterElement) return;
+        
+        // Зберігаємо розміри постера
+        const posterStyle = window.getComputedStyle(posterElement);
+        const width = posterStyle.width;
+        const height = posterStyle.height;
+        
+        container.innerHTML = `
+            <div style="
+                width: ${width};
+                height: ${height};
+                min-height: 250px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border-radius: 12px;
+                position: relative;
+                overflow: hidden;
+            ">
+                <div style="text-align: center; color: #fff;">
+                    <div style="font-size: 48px; margin-bottom: 15px; animation: pulse 1.5s infinite;">🎬</div>
+                    <div style="font-size: 16px; font-family: Arial, sans-serif;">Завантаження цізера...</div>
+                    <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">${movieData.title || ''}</div>
+                </div>
+            </div>
+        `;
+
+        // Додаємо анімацію
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.1); opacity: 0.7; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Пошук цізера через різні джерела
+    function searchCizer(movieData) {
+        return new Promise(function(resolve, reject) {
+            const title = movieData.title || '';
+            const year = movieData.year || '';
+            
+            // Пробуємо різні джерела послідовно
+            searchYouTube(title, year)
+                .then(resolve)
+                .catch(function() {
+                    // Якщо YouTube не спрацював, пробуємо запасний варіант
+                    return searchTmdb(movieData.id)
+                        .then(resolve)
+                        .catch(function() {
+                            resolve(null);
+                        });
+                });
+        });
+    }
+
+    // Пошук на YouTube
+    function searchYouTube(title, year) {
+        return new Promise(function(resolve, reject) {
+            const searchQuery = encodeURIComponent(`${title} ${year} official trailer`);
+            
+            // Використовуємо публічний API
+            fetch(`https://webtask.futurememes.com/api/youtube/search?q=${searchQuery}&maxResults=5`)
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Network error');
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data && data.items && data.items.length > 0) {
+                        // Шукаємо відео зі словами trailer/teaser в назві
+                        const trailerVideo = data.items.find(function(item) {
+                            const title = item.snippet.title.toLowerCase();
+                            return title.includes('trailer') || 
+                                   title.includes('teaser') || 
+                                   title.includes('трейлер') || 
+                                   title.includes('тизер');
+                        }) || data.items[0];
+                        
+                        if (trailerVideo) {
+                            resolve(trailerVideo.id.videoId);
+                        } else {
+                            reject('No video found');
+                        }
+                    } else {
+                        reject('No data');
+                    }
+                })
+                .catch(function(error) {
+                    console.warn('YouTube search failed:', error);
+                    reject(error);
+                });
+        });
+    }
+
+    // Запасний пошук через TMDB (якщо є API ключ, але це просто приклад)
+    function searchTmdb(movieId) {
+        return new Promise(function(resolve, reject) {
+            // Тут можна додати пошук через TMDB API
+            // Але для простоти поки повертаємо null
+            reject('TMDB search not implemented');
+        });
+    }
+
+    // Показуємо відео
+    function showVideo(container, videoId) {
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div style="
+                position: relative;
+                width: 100%;
+                padding-bottom: 56.25%;
+                background: #000;
+                border-radius: 12px;
+                overflow: hidden;
+            ">
+                <iframe
+                    style="
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                    "
+                    src="https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&controls=1"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                ></iframe>
+                <div style="
                     position: absolute;
-                    top: 10px;
-                    right: 10px;
-                    background: rgba(0,0,0,0.7);
-                    color: #ff6b6b;
+                    bottom: 10px;
+                    left: 10px;
+                    background: rgba(255, 0, 0, 0.8);
+                    color: white;
                     padding: 4px 8px;
                     border-radius: 4px;
                     font-size: 12px;
+                    font-weight: bold;
                     z-index: 10;
-                `;
-                badge.textContent = '🚫 Немає цізера';
-                posterContainer.style.position = 'relative';
-                posterContainer.appendChild(badge);
-            }
-        })
-        .catch(error => {
-            console.error('❌ Помилка пошуку цізера:', error);
-            posterContainer.innerHTML = originalPoster;
-        });
-}
-
-// Функція пошуку на YouTube
-async function searchYouTubeCizer(title, year) {
-    // Формуємо пошуковий запит
-    const searchQuery = encodeURIComponent(`${title} ${year || ''} цізер фільм трейлер`);
-    
-    // Використовуємо Invidious API (відкритий API для YouTube)
-    const apiUrl = `https://inv.riverside.rocks/api/v1/search?q=${searchQuery}&type=video`;
-    
-    try {
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        // Шукаємо відео, яке найбільше підходить (цізери зазвичай короткі)
-        const cizerVideo = data.find(video => {
-            const title = video.title.toLowerCase();
-            return (
-                (title.includes('цізер') || 
-                 title.includes('тизер') || 
-                 title.includes('трейлер') ||
-                 title.includes('teaser') || 
-                 title.includes('trailer')) &&
-                video.lengthSeconds < 180 // Коротші за 3 хвилини
-            );
-        }) || data[0]; // Якщо нічого не знайшли, беремо перше відео
-        
-        if (cizerVideo) {
-            console.log('✅ Знайдено цізер:', cizerVideo.title);
-            return cizerVideo.videoId;
-        }
-        
-        return null;
-    } catch (error) {
-        console.error('Помилка YouTube API:', error);
-        
-        // Альтернативний API на випадок помилки
-        return searchCizerAlternative(title, year);
-    }
-}
-
-// Альтернативний метод пошуку (запасний варіант)
-async function searchCizerAlternative(title, year) {
-    // Спробуємо інший Invidious інстанс
-    const altApiUrl = `https://invidious.snopyta.org/api/v1/search?q=${encodeURIComponent(title + ' ' + (year || '') + ' teaser')}&type=video`;
-    
-    try {
-        const response = await fetch(altApiUrl);
-        const data = await response.json();
-        return data[0]?.videoId || null;
-    } catch {
-        return null;
-    }
-}
-
-// Функція вставки YouTube плеєра
-function embedYouTubePlayer(container, videoId) {
-    container.innerHTML = `
-        <div style="
-            position: relative;
-            width: 100%;
-            height: 100%;
-            min-height: 300px;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-        ">
-            <iframe
-                style="
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    border: none;
-                "
-                src="https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1&modestbranding=1&rel=0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-            ></iframe>
-            <div style="
-                position: absolute;
-                bottom: 10px;
-                left: 10px;
-                background: rgba(0,0,0,0.7);
-                color: #fff;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-size: 12px;
-                z-index: 10;
-            ">
-                🎬 Цізер
-            </div>
-        </div>
-    `;
-    
-    console.log('✅ Плеєр вставлено успішно');
-}
-
-// Додаємо можливість налаштувань (опціонально)
-function addPluginSettings() {
-    Lampa.Settings.add({
-        key: 'cizer_plugin',
-        component: 'cizer_settings',
-        title: 'Налаштування цізерів',
-        icon: '🎬',
-        content: () => {
-            return `
-                <div class="settings__content">
-                    <h3>Налаштування плагіна цізерів</h3>
-                    <div class="settings__item">
-                        <div class="settings__item_title">Автоматичне відтворення</div>
-                        <div class="settings__item_value">
-                            <label class="switch">
-                                <input type="checkbox" id="autoplay_cizer">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="settings__item">
-                        <div class="settings__item_title">Джерело цізерів</div>
-                        <div class="settings__item_value">
-                            <select id="cizer_source">
-                                <option value="youtube">YouTube</option>
-                                <option value="kinopoisk">Кінопошук</option>
-                                <option value="tmdb">TMDB</option>
-                            </select>
-                        </div>
-                    </div>
+                ">
+                    🎬 ЦІЗЕР
                 </div>
-            `;
-        }
-    });
-}
+            </div>
+        `;
+        
+        console.log('✅ Відео вставлено:', videoId);
+    }
 
-// Ініціалізація при готовності Lampa
-if (window.appready) {
-    initCizerPlugin();
-    addPluginSettings();
-} else {
-    Lampa.Listener.follow('app', function(event) {
-        if (event.type === 'ready') {
-            initCizerPlugin();
-            addPluginSettings();
+    // Показуємо оригінальний постер
+    function showOriginalPoster(container, originalPoster) {
+        if (!container) return;
+        
+        container.innerHTML = originalPoster;
+        
+        // Додаємо позначку
+        const badge = document.createElement('div');
+        badge.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #ffaa00;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 100;
+            pointer-events: none;
+        `;
+        badge.textContent = '🚫 Немає цізера';
+        
+        if (container.firstChild) {
+            container.firstChild.style.position = 'relative';
+            container.firstChild.appendChild(badge);
         }
-    });
-}
+    }
 
-console.log('✅ Плагін цізерів завантажено');
+    // Чекаємо готовності Lampa
+    function waitForLampa() {
+        if (window.Lampa && Lampa.Listener) {
+            console.log('Lampa готова, запускаємо плагін');
+            initializeCizerPlugin();
+        } else {
+            console.log('Чекаємо Lampa...');
+            setTimeout(waitForLampa, 100);
+        }
+    }
+
+    // Запускаємо
+    waitForLampa();
+
+})();
