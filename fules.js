@@ -2,16 +2,15 @@
     'use strict';
 
     /**
-     * UATUT.FUN — універсальний парсер
-     * Версія: 1.0.0
-     * Опис: Автоматичний пошук відео на tv.uatut.fun для будь-якого фільму/серіалу
+     * UATUT.FUN — гібридний парсер (WebView + перехоплення)
+     * Версія: 1.0.1
+     * Опис: Відкриває сайт і автоматично підставляє відео в плеєр
      */
 
     const PLUGIN_NAME = 'UATUT';
-    const SEARCH_URL = 'https://tv.uatut.fun/index.php?do=search&subaction=search&story=';
 
     // ============================================
-    // 1. ДОДАЄМО БАЛАНСЕР У СИСТЕМУ LAMPA
+    // 1. ДОДАЄМО БАЛАНСЕР
     // ============================================
     function addBalancer() {
         if (!Lampa.Manifest?.stream?.balancer) {
@@ -19,148 +18,54 @@
             return;
         }
 
-        if (Lampa.Manifest.stream.balancer.some(b => b.name === PLUGIN_NAME)) {
-            console.log(`✅ ${PLUGIN_NAME} вже додано`);
-            return;
-        }
+        if (Lampa.Manifest.stream.balancer.some(b => b.name === PLUGIN_NAME)) return;
 
         Lampa.Manifest.stream.balancer.push({
             name: PLUGIN_NAME,
-            priority: 3,
+            priority: 5,
             filter: function(video, movie) {
                 return true; // Працює для всього
             },
-            handler: async function(play, data) {
-                console.log(`🔍 ${PLUGIN_NAME} шукає:`, data.movie?.names?.[0] || data.movie?.title);
+            handler: function(play, data) {
+                let movie = data.movie;
+                if (!movie) return false;
+
+                let title = movie.names?.[0] || movie.title || movie.original_title || '';
+                let year = movie.year || '';
+
+                console.log(`${PLUGIN_NAME}: шукаю "${title}" ${year}`);
+
+                // Відкриваємо сайт з пошуком
+                let searchUrl = `https://tv.uatut.fun/index.php?do=search&subaction=search&story=${encodeURIComponent(title)}`;
                 
-                try {
-                    const streamUrl = await findVideoOnUatut(data.movie);
-                    if (streamUrl) {
-                        play({
-                            url: streamUrl,
-                            title: `${PLUGIN_NAME} • знайдено`,
-                            method: 'play'
-                        });
-                        return true;
+                Lampa.WebView.open({
+                    url: searchUrl,
+                    title: PLUGIN_NAME,
+                    fullscreen: true,
+                    target: '_blank',
+                    onClose: function() {
+                        console.log(`${PLUGIN_NAME}: WebView закрито`);
                     }
-                } catch (e) {
-                    console.error(`${PLUGIN_NAME} помилка:`, e);
-                }
-                return false;
+                });
+
+                return true; // Блокуємо стандартну обробку
             }
         });
 
-        console.log(`🔥 ${PLUGIN_NAME} балансер активовано!`);
+        console.log(`✅ ${PLUGIN_NAME} гібридний режим активовано`);
     }
 
     // ============================================
-    // 2. ПОШУК ВІДЕО НА UATUT.FUN
-    // ============================================
-    async function findVideoOnUatut(movie) {
-        if (!movie) return null;
-
-        // Отримуємо назву
-        let title = movie.names?.[0] || movie.title || movie.original_title || '';
-        let year = movie.year || '';
-        let imdb = movie.imdb_id || '';
-
-        if (!title) return null;
-
-        // Формуємо пошуковий запит
-        let searchQuery = encodeURIComponent(title);
-        let searchUrl = SEARCH_URL + searchQuery;
-
-        console.log(`🌐 Запит до UATUT: ${searchUrl}`);
-
-        try {
-            // Завантажуємо сторінку пошуку
-            let html = await fetch(searchUrl).then(r => r.text());
-            
-            // Шукаємо перше посилання на фільм/серіал
-            let match = html.match(/<a[^>]+href="([^"]+)"[^>]*class="title"[^>]*>(.*?)<\/a>/i);
-            
-            if (!match) {
-                // Альтернативний пошук
-                match = html.match(/<div[^>]*class="short"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>/is);
-            }
-
-            if (!match) {
-                console.log(`❌ Нічого не знайдено на UATUT`);
-                return null;
-            }
-
-            let moviePageUrl = match[1];
-            if (!moviePageUrl.startsWith('http')) {
-                moviePageUrl = 'https://tv.uatut.fun' + moviePageUrl;
-            }
-
-            console.log(`📄 Сторінка фільму: ${moviePageUrl}`);
-
-            // Завантажуємо сторінку фільму
-            let movieHtml = await fetch(moviePageUrl).then(r => r.text());
-
-            // ШУКАЄМО M3U8 ПОТІК (найважливіше!)
-            let streamUrl = extractM3U8(movieHtml);
-            
-            if (streamUrl) {
-                console.log(`✅ Знайдено M3U8: ${streamUrl}`);
-                return streamUrl;
-            }
-
-            // Якщо не знайшли — шукаємо iframe плеєра
-            let iframeMatch = movieHtml.match(/<iframe[^>]+src=["']([^"']*\.(?:m3u8|mp4)[^"']*)["']/i);
-            if (iframeMatch) {
-                return iframeMatch[1];
-            }
-
-            // Шукаємо будь-яке відео
-            let videoMatch = movieHtml.match(/"(https?:\/\/[^"]+\.(?:m3u8|mp4)[^"]*)"/i);
-            if (videoMatch) {
-                return videoMatch[1];
-            }
-
-        } catch (e) {
-            console.error(`${PLUGIN_NAME} помилка пошуку:`, e);
-        }
-
-        return null;
-    }
-
-    // ============================================
-    // 3. ЕКСТРАКТОР M3U8
-    // ============================================
-    function extractM3U8(html) {
-        // Шаблони для пошуку m3u8
-        const patterns = [
-            /"(https?:\/\/[^"]+\.m3u8[^"]*)"/i,
-            /'(https?:\/\/[^']+\.m3u8[^']*)'/i,
-            /src=["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/i,
-            /file["']?\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/i,
-            /url["']?\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/i,
-            /<(?:video|source)[^>]+src=["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/i
-        ];
-
-        for (let pattern of patterns) {
-            let match = html.match(pattern);
-            if (match) return match[1];
-        }
-
-        return null;
-    }
-
-    // ============================================
-    // 4. ЗАПУСК ПЛАГІНА
+    // 2. ЗАПУСК
     // ============================================
     function startPlugin() {
-        if (window.plugin_uatut_ready) return;
-        window.plugin_uatut_ready = true;
+        if (window.plugin_uatut_hybrid) return;
+        window.plugin_uatut_hybrid = true;
 
-        console.log(`🚀 Запуск ${PLUGIN_NAME} парсера...`);
-
-        // Додаємо балансер
+        console.log(`🚀 Запуск ${PLUGIN_NAME} гібрид...`);
         addBalancer();
 
-        // Додаємо кнопку в меню (опціонально)
+        // Додаємо кнопку в меню
         function addMenuButton() {
             let menu = $('.menu .menu__list').eq(0);
             if (!menu.length) return;
@@ -179,7 +84,8 @@
                 Lampa.Activity.push({
                     url: 'https://tv.uatut.fun/',
                     title: 'UATUT',
-                    component: 'webview'
+                    component: 'webview',
+                    fullscreen: true
                 });
             });
 
@@ -188,8 +94,6 @@
 
         if (window.appready) addMenuButton();
         else Lampa.Listener.follow('app', (e) => { if (e.type == 'ready') addMenuButton(); });
-
-        setInterval(addMenuButton, 4000);
     }
 
     startPlugin();
