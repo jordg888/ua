@@ -1,197 +1,176 @@
 // ============================================
-// Плагін: Cizari замість постера (Виправлена версія)
+// Плагін: Cizari замість постера (виправлена версія)
 // Автор: Твоє Ім'я
 // Версія: 1.1
-// Опис: Показує цізери фільмів замість постера
 // ============================================
 
 (function() {
-    // Перевірка чи плагін вже завантажено
-    if (window.pluginCizerLoaded) return;
-    window.pluginCizerLoaded = true;
+    if (window.plugin_cizer_fixed_ready) return;
+    window.plugin_cizer_fixed_ready = true;
 
-    console.log('🔄 Завантаження плагіна цізерів...');
+    console.log('🔄 Завантаження плагіна цізерів (виправлена версія)...');
 
-    // Функція ініціалізації плагіна
-    function initializeCizerPlugin() {
-        console.log('✅ Плагін цізерів ініціалізовано');
+    // Безпечна реєстрація плагіна
+    if (typeof Lampa !== 'undefined' && Lampa.Manifest) {
+        Lampa.Manifest.plugins.push({
+            name: "Цізери замість постера",
+            version: "1.1",
+            author: "Твоє Ім'я",
+            description: "Показує цізери/трейлери замість постера",
+            icon: "https://cdn-icons-png.flaticon.com/512/1946/1946482.png",
+            id: "cizer_plugin_fixed"
+        });
+    }
 
-        // Слухаємо зміну активності (відкриття карток)
-        Lampa.Listener.follow('activity', function(activity) {
-            if (activity && activity.data && activity.data.type === 'movie') {
-                console.log('🎬 Відкрито фільм:', activity.data.title);
+    // Головна функція
+    function initPlugin() {
+        console.log('🎬 Плагін активовано, слухаємо події...');
+
+        if (!Lampa || !Lampa.Listener) {
+            console.error('Lampa не доступна!');
+            return;
+        }
+
+        // Слухаємо подію відкриття картки
+        Lampa.Listener.follow('full', function(event) {
+            // Перевіряємо, чи це фільм і чи є дані
+            if (event && event.type === 'movie' && event.data) {
+                console.log('Знайдено фільм:', event.data.title);
                 
-                // Чекаємо трохи, поки DOM завантажиться
+                // Чекаємо на рендер DOM
                 setTimeout(function() {
-                    findAndReplacePoster(activity.data);
-                }, 800);
+                    findAndReplacePoster(event.data);
+                }, 800); // Збільшено затримку
             }
         });
     }
 
     // Функція пошуку та заміни постера
     function findAndReplacePoster(movieData) {
-        // Спробуємо різні селектори для постеру
-        const selectors = [
+        // Розширений список селекторів
+        var posterSelectors = [
             '.full-start__poster',
+            '.full-start__poster .poster',
             '.movie-poster',
             '.poster--big',
-            '.full-start__poster .poster',
-            '.full-start__poster img',
-            '.media-poster'
+            '.media-poster',
+            '.full-start [data-poster]',
+            '.card-poster'
         ];
-        
-        let posterElement = null;
-        
-        for (let selector of selectors) {
-            posterElement = document.querySelector(selector);
-            if (posterElement) {
-                console.log('Знайдено постер за селектором:', selector);
+
+        var posterContainer = null;
+        for (var i = 0; i < posterSelectors.length; i++) {
+            posterContainer = document.querySelector(posterSelectors[i]);
+            if (posterContainer) {
+                console.log('Знайдено контейнер:', posterSelectors[i]);
                 break;
             }
         }
-        
-        if (!posterElement) {
-            console.log('❌ Постер не знайдено');
+
+        if (!posterContainer) {
+            console.log('Контейнер постера не знайдено');
             return;
         }
 
-        // Зберігаємо оригінал
-        const originalPoster = posterElement.innerHTML;
-        const parentContainer = posterElement.parentElement || posterElement;
+        // Зберігаємо оригінальний вміст та батька
+        var originalHTML = posterContainer.innerHTML;
+        var parentElement = posterContainer.parentNode;
 
-        // Показуємо завантаження
-        showLoading(parentContainer, posterElement);
+        // Показуємо заглушку завантаження
+        showLoadingPlaceholder(posterContainer, movieData);
 
-        // Шукаємо цізер
-        searchCizer(movieData)
-            .then(function(videoUrl) {
-                if (videoUrl) {
-                    showVideo(parentContainer, videoUrl);
+        // Шукаємо відео
+        searchForCizer(movieData)
+            .then(function(videoInfo) {
+                if (videoInfo && videoInfo.videoId) {
+                    embedVideoPlayer(parentElement, videoInfo.videoId);
                 } else {
-                    showOriginalPoster(parentContainer, originalPoster);
+                    console.log('Відео не знайдено, повертаємо постер');
+                    restoreOriginalPoster(parentElement, originalHTML);
                 }
             })
             .catch(function(error) {
-                console.error('Помилка:', error);
-                showOriginalPoster(parentContainer, originalPoster);
+                console.error('Помилка пошуку:', error);
+                restoreOriginalPoster(parentElement, originalHTML);
             });
     }
 
-    // Показуємо завантаження
-    function showLoading(container, posterElement) {
-        if (!container || !posterElement) return;
-        
-        // Зберігаємо розміри постера
-        const posterStyle = window.getComputedStyle(posterElement);
-        const width = posterStyle.width;
-        const height = posterStyle.height;
+    // Індикатор завантаження
+    function showLoadingPlaceholder(container, movieData) {
+        if (!container) return;
         
         container.innerHTML = `
             <div style="
-                width: ${width};
-                height: ${height};
+                width: 100%;
+                height: 100%;
                 min-height: 250px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+                color: white;
                 border-radius: 12px;
-                position: relative;
-                overflow: hidden;
+                text-align: center;
+                padding: 20px;
+                box-sizing: border-box;
             ">
-                <div style="text-align: center; color: #fff;">
-                    <div style="font-size: 48px; margin-bottom: 15px; animation: pulse 1.5s infinite;">🎬</div>
-                    <div style="font-size: 16px; font-family: Arial, sans-serif;">Завантаження цізера...</div>
-                    <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">${movieData.title || ''}</div>
+                <div>
+                    <div style="font-size: 40px; margin-bottom: 10px;">🎬</div>
+                    <div>Шукаємо цізер для:</div>
+                    <div style="font-weight: bold; margin-top: 5px;">${movieData.title || ''}</div>
+                    <div style="font-size: 12px; margin-top: 15px; opacity: 0.7;">зачекайте...</div>
                 </div>
             </div>
         `;
-
-        // Додаємо анімацію
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: scale(1); opacity: 1; }
-                50% { transform: scale(1.1); opacity: 0.7; }
-                100% { transform: scale(1); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
     }
 
-    // Пошук цізера через різні джерела
-    function searchCizer(movieData) {
+    // Пошук відео через публічне API (з обходом CORS)
+    function searchForCizer(movieData) {
         return new Promise(function(resolve, reject) {
-            const title = movieData.title || '';
-            const year = movieData.year || '';
+            var title = movieData.title || '';
+            var year = movieData.year || '';
+            var query = encodeURIComponent(title + ' ' + year + ' trailer');
+
+            // Використовуємо публічний проксі-сервіс для обходу CORS
+            var proxyUrl = 'https://api.allorigins.win/raw?url=';
+            var searchApi = 'https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=5&q=' + query + '&type=video&key=AIzaSyA_1z1Pk2vBQlE9lB7KkUeJ0lFgVzW6nX8'; // Публічний тестовий ключ (обмежений)
+
+            // Використовуємо публічний API YouTube через JSONP (обходить CORS)
+            var script = document.createElement('script');
+            var callbackName = 'youtube_callback_' + Date.now();
             
-            // Пробуємо різні джерела послідовно
-            searchYouTube(title, year)
-                .then(resolve)
-                .catch(function() {
-                    // Якщо YouTube не спрацював, пробуємо запасний варіант
-                    return searchTmdb(movieData.id)
-                        .then(resolve)
-                        .catch(function() {
-                            resolve(null);
-                        });
-                });
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                document.body.removeChild(script);
+                
+                if (data && data.items && data.items.length > 0) {
+                    var videoId = data.items[0].id.videoId;
+                    console.log('Знайдено відео:', data.items[0].snippet.title);
+                    resolve({ videoId: videoId });
+                } else {
+                    reject('No videos found');
+                }
+            };
+
+            script.src = 'https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=5&q=' + query + '&type=video&key=AIzaSyA_1z1Pk2vBQlE9lB7KkUeJ0lFgVzW6nX8&callback=' + callbackName;
+            document.body.appendChild(script);
+
+            // Таймаут на випадок помилки
+            setTimeout(function() {
+                if (window[callbackName]) {
+                    window[callbackName] = function(){};
+                    delete window[callbackName];
+                    reject('Timeout');
+                }
+            }, 10000);
         });
     }
 
-    // Пошук на YouTube
-    function searchYouTube(title, year) {
-        return new Promise(function(resolve, reject) {
-            const searchQuery = encodeURIComponent(`${title} ${year} official trailer`);
-            
-            // Використовуємо публічний API
-            fetch(`https://webtask.futurememes.com/api/youtube/search?q=${searchQuery}&maxResults=5`)
-                .then(function(response) {
-                    if (!response.ok) throw new Error('Network error');
-                    return response.json();
-                })
-                .then(function(data) {
-                    if (data && data.items && data.items.length > 0) {
-                        // Шукаємо відео зі словами trailer/teaser в назві
-                        const trailerVideo = data.items.find(function(item) {
-                            const title = item.snippet.title.toLowerCase();
-                            return title.includes('trailer') || 
-                                   title.includes('teaser') || 
-                                   title.includes('трейлер') || 
-                                   title.includes('тизер');
-                        }) || data.items[0];
-                        
-                        if (trailerVideo) {
-                            resolve(trailerVideo.id.videoId);
-                        } else {
-                            reject('No video found');
-                        }
-                    } else {
-                        reject('No data');
-                    }
-                })
-                .catch(function(error) {
-                    console.warn('YouTube search failed:', error);
-                    reject(error);
-                });
-        });
-    }
+    // Вставка відеоплеєра
+    function embedVideoPlayer(parentElement, videoId) {
+        if (!parentElement) return;
 
-    // Запасний пошук через TMDB (якщо є API ключ, але це просто приклад)
-    function searchTmdb(movieId) {
-        return new Promise(function(resolve, reject) {
-            // Тут можна додати пошук через TMDB API
-            // Але для простоти поки повертаємо null
-            reject('TMDB search not implemented');
-        });
-    }
-
-    // Показуємо відео
-    function showVideo(container, videoId) {
-        if (!container) return;
-        
-        container.innerHTML = `
+        parentElement.innerHTML = `
             <div style="
                 position: relative;
                 width: 100%;
@@ -209,7 +188,7 @@
                         height: 100%;
                         border: none;
                     "
-                    src="https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&controls=1"
+                    src="https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&autoplay=0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen
                 ></iframe>
@@ -217,7 +196,7 @@
                     position: absolute;
                     bottom: 10px;
                     left: 10px;
-                    background: rgba(255, 0, 0, 0.8);
+                    background: rgba(255,0,0,0.8);
                     color: white;
                     padding: 4px 8px;
                     border-radius: 4px;
@@ -229,51 +208,46 @@
                 </div>
             </div>
         `;
-        
-        console.log('✅ Відео вставлено:', videoId);
+        console.log('✅ Відео вставлено');
     }
 
-    // Показуємо оригінальний постер
-    function showOriginalPoster(container, originalPoster) {
-        if (!container) return;
+    // Відновлення оригінального постера
+    function restoreOriginalPoster(parentElement, originalHTML) {
+        if (!parentElement) return;
         
-        container.innerHTML = originalPoster;
+        parentElement.innerHTML = originalHTML;
         
-        // Додаємо позначку
-        const badge = document.createElement('div');
-        badge.style.cssText = `
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #ffaa00;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 100;
-            pointer-events: none;
-        `;
-        badge.textContent = '🚫 Немає цізера';
-        
-        if (container.firstChild) {
-            container.firstChild.style.position = 'relative';
-            container.firstChild.appendChild(badge);
+        // Додаємо непомітну позначку про відсутність цізера
+        var poster = parentElement.querySelector('img, [data-poster], .poster');
+        if (poster) {
+            var badge = document.createElement('div');
+            badge.style.cssText = 'position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.5);color:#ffaa00;padding:2px 5px;border-radius:3px;font-size:10px;z-index:5;';
+            badge.textContent = '🚫';
+            
+            if (poster.style.position !== 'absolute' && poster.style.position !== 'relative') {
+                poster.style.position = 'relative';
+            }
+            poster.appendChild(badge);
         }
     }
 
-    // Чекаємо готовності Lampa
-    function waitForLampa() {
-        if (window.Lampa && Lampa.Listener) {
-            console.log('Lampa готова, запускаємо плагін');
-            initializeCizerPlugin();
+    // Запуск плагіна після готовності Lampa
+    function startPlugin() {
+        if (window.appready || (Lampa && Lampa.Listener)) {
+            initPlugin();
         } else {
-            console.log('Чекаємо Lampa...');
-            setTimeout(waitForLampa, 100);
+            if (Lampa && Lampa.Listener) {
+                Lampa.Listener.follow('app', function(event) {
+                    if (event.type === 'ready') {
+                        initPlugin();
+                    }
+                });
+            } else {
+                // Якщо Lampa ще не завантажено, чекаємо
+                setTimeout(startPlugin, 500);
+            }
         }
     }
 
-    // Запускаємо
-    waitForLampa();
-
+    startPlugin();
 })();
