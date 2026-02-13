@@ -1,25 +1,36 @@
 (function () {
     'use strict';
 
-    // ======= ВАРІАНТ ІКОНИ (можна замінити на свою) =======
-    var ICON_ONLINE = 'https://yarikrazor-star.github.io/lmp/balancer.svg'; // або інший svg/png
+    // ==== Іконка для кнопки Онлайн ====
+    var ICON_ONLINE = 'https://yarikrazor-star.github.io/lmp/balancer.svg';
 
-    // ======= ФУНКЦІЯ ДЛЯ ПІДКЛЮЧЕННЯ BANDERA =======
-    var Bandera = createBanderaSource('my_bandera'); // sourceKey під себе!
+    // ==== Під'єднання Bandera з унікальним ключем ====
+    var sourceKey = 'my_bandera_only_you';
 
-    // ==================================
-    // Додаємо кнопку "Онлайн" у картку фільму
+    // ======== Bandera core (повністю з твого bandera.txt) ========
+    function createV2(sourceKey) {
+      // ==== ВСТАВЛЯЄМО ОСЬ ТУТ ВСЮ ФУНКЦІЮ З ФАЙЛА bandera.txt ====
+      // Початок вставки
+      var api_base = 'https://banderabackend.lme.isroot.in/api/v2';
+      // ... (Весь великий код з bandera.txt із визначенням createV2, без змін) ...
+      // Тут кінчається велика функція, нічого правити всередині не треба
+    }
+    if (window.Lampa && window.Lampa.Player) {
+      window.Lampa.Player.addSource(sourceKey, createV2(sourceKey));
+    }
+    // ========= END Bandera core ==========
+
+    // ====== Додаємо кнопку "Онлайн" до картки фільму =======
     function addOnlineButton(data, html) {
         var container = $(html);
-        if (container.find('.my-online-button').length) return; // вже є
+        if (container.find('.my-online-button').length) return;
 
         var button = $('<div class="full-start__button selector my-online-button">' +
             '<img src="' + ICON_ONLINE + '">' +
             '<span>Онлайн</span>' +
             '</div>');
 
-        // Добавимо CSS для кнопки
-        var style = 
+        var style =
         '.my-online-button { display: flex !important; align-items: center; justify-content: center; }' +
         '.my-online-button img { width: 1.6em; height: 1.6em; object-fit: contain; margin-right: 5px; }' +
         '.online-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 2100; display: flex; align-items: center; justify-content: center; }' +
@@ -44,18 +55,19 @@
         });
     }
 
-    // ==== МЕНЮ ДЛЯ ВИБОРУ БАЛАНСЕРА ====
     function showOnlineBalancers(movie) {
         var balancers = [
             {
-                key: 'my_bandera',
+                key: sourceKey,
                 icon: '🇺🇦',
                 name: 'Bandera Online',
-                search: function(cb) { Bandera.searchByTitle({movie: movie}, movie.title || movie.name); }
+                search: function() {
+                    // Запускаємо пошук, копіюючи логіку Bandera
+                    var backend = new (createV2(sourceKey))(sourceKey);
+                    backend.searchByTitle({movie: movie}, movie.title || movie.name);
+                }
             }
-            // Сюди можна додати ще інші, якщо будеш розширювати
         ];
-
         var menu = $('<div class="online-select-container"><div class="online-select-body">' +
             '<div style="font-size: 1.4em; margin-bottom: 20px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">Обери онлайн-балансер</div>' +
             '<div class="online-items-list"></div></div></div>');
@@ -96,7 +108,6 @@
         window.Lampa.Controller.toggle('my_online_menu');
     }
 
-    // === Підключення до картки фільму ===
     function followFullCard() {
         window.Lampa.Listener.follow('full', function (e) {
             if (e.type === 'complite') {
@@ -109,25 +120,7 @@
         });
     }
 
-    // === Додаємо плагін Bandera, легка модифікація під свій ключ (sourceKey) ===
-    // Це повна копія логіки Bandera, але реєструється як твій source.
-    function createBanderaSource(sourceKey) {
-        // === встав повний код Bandera createV2 з файла bandera.txt тут ===
-        // В цій вставці на старті треба оголосити ключ:
-        // function createV2(sourceKey) {... } --- весь код із bandera.txt
-
-        // Кінець Bandera-коду
-        // Додаємо реєстрацію джерела у Lampa:
-        if (window.Lampa && window.Lampa.Player) {
-            window.Lampa.Player.addSource(sourceKey, createV2(sourceKey));
-        }
-        // Повертаємо новенький source:
-        return new (createV2(sourceKey))(sourceKey);
-    }
-
-    // === Запуск всього плагіна ===
     if (window.Lampa) {
         followFullCard();
     }
-
 })();
