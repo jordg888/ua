@@ -2,40 +2,175 @@
     'use strict';
 
     /**
-     * UATUT.FUN — універсальний парсер з кнопкою в картці
-     * Версія: 2.0.0
-     * Опис: Додає кнопку "UATUT" у картку фільму + автоматичний пошук
-     * Автор: @TurksPlugin
+     * UASerial.pro — повністю автоматичний парсер
+     * Версія: 1.0.0
+     * Опис: Автоматично знаходить .m3u8 та відтворює в плеєрі
+     * Автор: @UATUT_Plugin
      */
 
     // ============================================
-    // 1. НАЛАШТУВАННЯ ПОШУКУ (ТВОЇ НАЛАШТУВАННЯ)
+    // 1. НАЛАШТУВАННЯ ПОШУКУ
     // ============================================
     var parser_settings = {
         'parse_lang': 'lg_df_year'  // Українська + Оригінал + Рік
     };
 
-    // ============================================
-    // 2. КОНФІГУРАЦІЯ
-    // ============================================
     var CONFIG = {
-        name: 'UATUT',
-        icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 6h-7.59l3.29-3.29L16 2l-4 4-4-4-.71.71L10.59 6H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>',
-        searchUrl: 'https://tv.uatut.fun/index.php?do=search&subaction=search&story='
+        name: 'UASerial',
+        icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v12H4V6zm2 2v8h12V8H6zm2 2h8v4H8v-4z"/></svg>',
+        searchUrl: 'https://uaserials.pro/index.php?do=search&subaction=search&story='
     };
 
     // ============================================
-    // 3. ДОДАВАННЯ КНОПКИ В КАРТКУ ФІЛЬМУ
+    // 2. ОСНОВНА ФУНКЦІЯ ПОШУКУ .M3U8
     // ============================================
-    function addUatutButton() {
-        if (!Lampa.Components) return;
+    async function findM3U8onUASerial(movie) {
+        if (!movie) return null;
 
-        // Зберігаємо оригінальний компонент
+        var title = movie.title || movie.name || movie.original_title || '';
+        var year = movie.year || '';
+        var imdb = movie.imdb_id || '';
+
+        console.log('🔍 UASerial: Пошук', title, year);
+
+        // Формуємо запити згідно parser_settings
+        var queries = [];
+        
+        if (parser_settings.parse_lang === 'lg_df_year') {
+            queries.push(title + ' ' + year + ' українською');
+            queries.push(title + ' українською');
+            queries.push(title + ' ' + year);
+            queries.push(title);
+        }
+
+        // Пробуємо кожен запит
+        for (var i = 0; i < queries.length; i++) {
+            var searchUrl = CONFIG.searchUrl + encodeURIComponent(queries[i]);
+            console.log('🌐 Запит:', searchUrl);
+
+            try {
+                var html = await fetch(searchUrl).then(r => r.text());
+                
+                // Шукаємо перше посилання на фільм/серіал
+                var movieLink = extractMovieLink(html);
+                if (!movieLink) continue;
+
+                console.log('📄 Сторінка фільму:', movieLink);
+                
+                // Отримуємо HTML сторінки фільму
+                var movieHtml = await fetch(movieLink).then(r => r.text());
+                
+                // Шукаємо .m3u8
+                var streamUrl = extractM3U8(movieHtml);
+                
+                if (streamUrl) {
+                    console.log('✅ Знайдено .m3u8:', streamUrl);
+                    return {
+                        url: streamUrl,
+                        title: CONFIG.name,
+                        quality: 'HD',
+                        method: 'play'
+                    };
+                }
+            } catch (e) {
+                console.log('❌ Помилка запиту:', e);
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    // ============================================
+    // 3. ЕКСТРАКТОР ПОСИЛАННЯ НА ФІЛЬМ
+    // ============================================
+    function extractMovieLink(html) {
+        // Шукаємо посилання на сторінку фільму
+        var patterns = [
+            /<a[^>]+href="([^"]+)"[^>]*class="short-title"[^>]*>/i,
+            /<div[^>]*class="th-item"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>/is,
+            /<article.*?<a[^>]+href="([^"]+)"[^>]*class="poster"[^>]*>/is,
+            /<a[^>]+href="(https?:\/\/uaserials\.pro\/[^"]+\/\d+-[^"]+\.html)"[^>]*>/i
+        ];
+
+        for (var i = 0; i < patterns.length; i++) {
+            var match = html.match(patterns[i]);
+            if (match) {
+                var link = match[1];
+                if (!link.startsWith('http')) {
+                    link = 'https://uaserials.pro' + link;
+                }
+                return link;
+            }
+        }
+        return null;
+    }
+
+    // ============================================
+    // 4. ЕКСТРАКТОР .M3U8
+    // ============================================
+    function extractM3U8(html) {
+        var patterns = [
+            /file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i,
+            /url["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i,
+            /src=["']([^"']+\.m3u8[^"']*)["']/i,
+            /"(https?:\/\/[^"]+\.m3u8[^"]*)"/i,
+            /'(https?:\/\/[^']+\.m3u8[^']*)'/i,
+            /<source[^>]+src=["']([^"']+\.m3u8[^"']*)["']/i
+        ];
+
+        for (var i = 0; i < patterns.length; i++) {
+            var match = html.match(patterns[i]);
+            if (match) return match[1];
+        }
+        return null;
+    }
+
+    // ============================================
+    // 5. ДОДАВАННЯ БАЛАНСЕРА
+    // ============================================
+    function addBalancer() {
+        if (!Lampa.Manifest?.stream?.balancer) {
+            setTimeout(addBalancer, 1000);
+            return;
+        }
+
+        if (Lampa.Manifest.stream.balancer.some(b => b.name === CONFIG.name)) {
+            console.log('✅ UASerial вже додано');
+            return;
+        }
+
+        Lampa.Manifest.stream.balancer.push({
+            name: CONFIG.name,
+            priority: 3,
+            filter: function(video, movie) {
+                return true; // Працює для всього
+            },
+            handler: async function(play, data) {
+                try {
+                    var streamData = await findM3U8onUASerial(data.movie);
+                    if (streamData) {
+                        play(streamData);
+                        return true;
+                    }
+                } catch (e) {
+                    console.error('UASerial помилка:', e);
+                }
+                return false;
+            }
+        });
+
+        console.log('✅ UASerial балансер активовано!');
+    }
+
+    // ============================================
+    // 6. ДОДАВАННЯ КНОПКИ В КАРТКУ
+    // ============================================
+    function addButton() {
+        if (!Lampa.Short) return;
+
         var originalShort = Lampa.Short;
-
-        if (!originalShort) return;
-
-        // Замінюємо компонент Short
+        
         Lampa.Short = function() {
             var result = originalShort.apply(this, arguments);
             
@@ -44,161 +179,58 @@
                     var container = $('.short .short__buttons').first();
                     if (!container.length) return;
 
-                    // Отримуємо дані фільму
                     var activity = Lampa.Activity.active();
-                    var movie = activity ? (activity.data || activity) : null;
-                    
-                    if (!movie) return;
+                    if (!activity) return;
 
-                    // Перевіряємо чи кнопка вже існує
-                    if (container.find('.short__button[data-id="uatut-search"]').length) return;
+                    if (container.find('.short__button[data-id="uaserials"]').length) return;
 
-                    // Створюємо кнопку
-                    var button = $('<div class="short__button selector" data-id="uatut-search" style="order: 999">' +
+                    var button = $('<div class="short__button selector" data-id="uaserials" style="order: 998">' +
                         '<div class="short__button-icon">' + CONFIG.icon + '</div>' +
                         '<span>' + CONFIG.name + '</span>' +
                         '</div>');
 
-                    // Додаємо обробник кліку
-                    button.on('hover:enter', function() {
-                        searchOnUatut(movie);
+                    button.on('hover:enter', async function() {
+                        Lampa.Notify.info('🔍 Шукаю на ' + CONFIG.name + '...');
+                        var stream = await findM3U8onUASerial(activity);
+                        if (stream) {
+                            Lampa.Player.play(stream);
+                        } else {
+                            Lampa.Notify.warning('❌ Не знайдено на ' + CONFIG.name);
+                        }
                     });
 
                     container.append(button);
-                    
                 } catch (e) {
-                    console.error('UATUT: Помилка додавання кнопки', e);
+                    console.error('Помилка додавання кнопки:', e);
                 }
             }, 500);
 
             return result;
         };
 
-        // Копіюємо прототип
         Lampa.Short.prototype = originalShort.prototype;
-        Lampa.Short.prototype.constructor = Lampa.Short;
-        
-        console.log('✅ UATUT: Кнопку додано в картку фільму');
-    }
-
-    // ============================================
-    // 4. ПОШУК НА UATUT (З ТВОЇМИ НАЛАШТУВАННЯМИ)
-    // ============================================
-    function searchOnUatut(movie) {
-        if (!movie) return;
-
-        // Отримуємо дані фільму
-        var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
-        var year = movie.year || '';
-        var originalTitle = movie.original_title || movie.original_name || '';
-
-        console.log('🔍 UATUT: Шукаю', title, year);
-
-        // ============================================
-        // 5. ФОРМУВАННЯ ЗАПИТІВ ЗГІДНО parse_lang
-        // ============================================
-        var searchQueries = [];
-
-        if (parser_settings.parse_lang === 'lg_df_year') {
-            // 1. Українська + рік
-            searchQueries.push(encodeURIComponent(title + ' ' + year + ' українською'));
-            searchQueries.push(encodeURIComponent(title + ' українською'));
-            // 2. Оригінал + рік
-            if (originalTitle && originalTitle !== title) {
-                searchQueries.push(encodeURIComponent(originalTitle + ' ' + year));
-                searchQueries.push(encodeURIComponent(originalTitle));
-            }
-            // 3. Тільки назва + рік
-            searchQueries.push(encodeURIComponent(title + ' ' + year));
-            searchQueries.push(encodeURIComponent(title));
-        }
-
-        // Відкриваємо WebView з пошуком
-        var searchUrl = CONFIG.searchUrl + searchQueries[0];
-        
-        Lampa.WebView.open({
-            url: searchUrl,
-            title: CONFIG.name + ' - ' + title,
-            fullscreen: true,
-            target: '_blank'
-        });
-    }
-
-    // ============================================
-    // 6. ДОДАВАННЯ БАЛАНСЕРІВ (УКРАЇНСЬКІ)
-    // ============================================
-    function addBalancers() {
-        if (!Lampa.Manifest?.stream?.balancer) {
-            setTimeout(addBalancers, 1000);
-            return;
-        }
-
-        var balancers = [
-            {
-                name: 'UATUT',
-                priority: 5,
-                filter: function() { return true; },
-                handler: function(play, data) {
-                    if (data.movie) searchOnUatut(data.movie);
-                    return true;
-                }
-            }
-        ];
-
-        balancers.forEach(function(b) {
-            if (!Lampa.Manifest.stream.balancer.some(function(ex) { return ex.name === b.name; })) {
-                Lampa.Manifest.stream.balancer.push(b);
-                console.log('✅ Додано балансер:', b.name);
-            }
-        });
     }
 
     // ============================================
     // 7. ЗАПУСК
     // ============================================
     function startPlugin() {
-        if (window.plugin_uatut_card) return;
-        window.plugin_uatut_card = true;
+        if (window.plugin_uaserials_ready) return;
+        window.plugin_uaserials_ready = true;
 
-        console.log('🚀 Запуск UATUT плагіна з кнопкою в картці');
+        console.log('🚀 Запуск UASerial автоматичного парсера');
 
-        // Додаємо кнопку після завантаження додатку
         if (window.appready) {
-            addUatutButton();
-            addBalancers();
+            addBalancer();
+            addButton();
         } else {
             Lampa.Listener.follow('app', function(e) {
                 if (e.type === 'ready') {
-                    addUatutButton();
-                    addBalancers();
+                    addBalancer();
+                    addButton();
                 }
             });
         }
-
-        // Додаємо кнопку в меню (опціонально)
-        function addMenuButton() {
-            var menu = $('.menu .menu__list').eq(0);
-            if (!menu.length) return;
-            if (menu.find('.menu__item[data-sid="uatut"]').length) return;
-
-            var btn = $('<li class="menu__item selector" data-sid="uatut">' +
-                '<div class="menu__ico">' + CONFIG.icon + '</div>' +
-                '<div class="menu__text">' + CONFIG.name + '</div>' +
-                '</li>');
-
-            btn.on('hover:enter', function() {
-                Lampa.Activity.push({
-                    url: 'https://tv.uatut.fun/',
-                    title: CONFIG.name,
-                    component: 'webview',
-                    fullscreen: true
-                });
-            });
-
-            menu.append(btn);
-        }
-
-        setTimeout(addMenuButton, 2000);
     }
 
     startPlugin();
