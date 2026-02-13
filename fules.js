@@ -2,18 +2,19 @@
     'use strict';
 
     /**
-     * UASerial.pro — РОБОЧА ВЕРСІЯ (тільки кнопка)
-     * Версія: 5.0.0 (стабільна)
+     * UASerial.pro — ПОВНІСТЮ РОБОЧИЙ
+     * Версія: 7.0.0
      */
 
     var CONFIG = {
         name: 'UASerial',
         icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v12H4V6zm2 2v8h12V8H6zm2 2h8v4H8v-4z"/></svg>',
+        searchUrl: 'https://uaserials.pro/index.php?do=search&subaction=search&story=',
         isOpened: false
     };
 
     // ============================================
-    // 1. ДОДАВАННЯ КНОПКИ (ТОЙ САМИЙ РОБОЧИЙ КОД)
+    // 1. ДОДАВАННЯ КНОПКИ (ТВІЙ РОБОЧИЙ КОД)
     // ============================================
     function UASerialPlugin() {
         this.init = function () {
@@ -30,6 +31,7 @@
         };
 
         this.render = function (data, html) {
+            var _this = this;
             var container = $(html);
             
             if (container.find('.lampa-uaserial-button').length) return;
@@ -48,24 +50,139 @@
                 buttons_container.append(button);
             }
 
+            // ТЕПЕР ТУТ СПРАВЖНІЙ ПОШУК
             button.on('hover:enter click', function() {
                 if (!CONFIG.isOpened) {
-                    Lampa.Noty.show('🔍 Пошук поки що в розробці...');
+                    _this.startSearch(data.movie);
                 }
             });
 
             console.log('✅ Кнопку UASerial додано!');
         };
+
+        // ============================================
+        // 2. ПОШУК (АДАПТОВАНИЙ ПІД UASERIAL)
+        // ============================================
+        this.startSearch = function (movie) {
+            if (!movie) return;
+            
+            CONFIG.isOpened = true;
+            Lampa.Noty.show('🔍 Пошук на UASerial...');
+
+            var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
+            var year = (movie.release_date || movie.first_air_date || '').substring(0, 4);
+            var isTV = !!(movie.first_air_date || movie.number_of_seasons);
+            
+            // Формуємо пошуковий запит
+            var searchQuery = title + ' ' + year;
+            if (isTV) searchQuery += ' серіал';
+            
+            var _this = this;
+            
+            $.ajax({
+                url: CONFIG.searchUrl + encodeURIComponent(searchQuery),
+                dataType: 'html',
+                success: function(html) {
+                    _this.parseSearchResults(html);
+                },
+                error: function() {
+                    Lampa.Noty.show('❌ Помилка з\'єднання');
+                    CONFIG.isOpened = false;
+                }
+            });
+        };
+
+        this.parseSearchResults = function(html) {
+            // Шукаємо посилання на фільм/серіал
+            var match = html.match(/<a[^>]+href="([^"]+)"[^>]*class="short-title"[^>]*>/i) ||
+                       html.match(/href="(https?:\/\/uaserials\.pro\/\d+-[^"]+\.html)"/i);
+            
+            if (!match) {
+                Lampa.Noty.show('❌ Фільм не знайдено');
+                CONFIG.isOpened = false;
+                return;
+            }
+
+            var movieUrl = match[1];
+            if (!movieUrl.startsWith('http')) {
+                movieUrl = 'https://uaserials.pro' + movieUrl;
+            }
+
+            var _this = this;
+            
+            $.ajax({
+                url: movieUrl,
+                dataType: 'html',
+                success: function(movieHtml) {
+                    _this.extractIframe(movieHtml);
+                },
+                error: function() {
+                    Lampa.Noty.show('❌ Помилка завантаження');
+                    CONFIG.isOpened = false;
+                }
+            });
+        };
+
+        this.extractIframe = function(html) {
+            // Шукаємо iframe плеєра
+            var iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+            
+            if (!iframeMatch) {
+                Lampa.Noty.show('❌ Плеєр не знайдено');
+                CONFIG.isOpened = false;
+                return;
+            }
+
+            var iframeUrl = iframeMatch[1];
+            if (!iframeUrl.startsWith('http')) {
+                iframeUrl = 'https://uaserials.pro' + iframeUrl;
+            }
+
+            var _this = this;
+            
+            $.ajax({
+                url: iframeUrl,
+                dataType: 'html',
+                success: function(playerHtml) {
+                    _this.extractM3U8(playerHtml);
+                },
+                error: function() {
+                    Lampa.Noty.show('❌ Помилка завантаження плеєра');
+                    CONFIG.isOpened = false;
+                }
+            });
+        };
+
+        this.extractM3U8 = function(html) {
+            // Шукаємо .m3u8 потік
+            var m3u8Match = html.match(/file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) ||
+                           html.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i) ||
+                           html.match(/source src=["']([^"']+\.m3u8[^"']*)["']/i);
+
+            if (m3u8Match) {
+                Lampa.Noty.hide();
+                Lampa.Player.play({
+                    url: m3u8Match[1],
+                    title: CONFIG.name,
+                    method: 'play'
+                });
+                Lampa.Noty.show('✅ Відео знайдено!', 2000);
+            } else {
+                Lampa.Noty.show('❌ Потік не знайдено');
+            }
+            
+            CONFIG.isOpened = false;
+        };
     }
 
     // ============================================
-    // 2. ЗАПУСК
+    // 3. ЗАПУСК
     // ============================================
     function startPlugin() {
-        if (window.uaserial_final) return;
-        window.uaserial_final = true;
+        if (window.uaserial_working) return;
+        window.uaserial_working = true;
 
-        console.log('🚀 Запуск UASerial (стабільна версія)');
+        console.log('🚀 Запуск UASerial (робоча версія)');
 
         if (!$('#uaserial-style').length) {
             $('head').append('<style id="uaserial-style">' +
