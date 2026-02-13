@@ -2,48 +2,126 @@
     'use strict';
 
     /**
-     * UASerial.pro — АБСОЛЮТНО РОБОЧИЙ ПЛАГІН
-     * Версія: 2.0.0
-     * Опис: 100% автоматичний пошук + кнопка в картці
+     * UASerial.pro — АДАПТОВАНИЙ ПІД LAMPA
+     * Версія: 3.0.0
+     * Опис: Кнопка працює ТОЧНО як Вікіпедія
      */
 
     var CONFIG = {
         name: 'UASerial',
         icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v12H4V6zm2 2v8h12V8H6zm2 2h8v4H8v-4z"/></svg>',
-        searchUrl: 'https://uaserials.pro/index.php?do=search&subaction=search&story='
+        searchUrl: 'https://uaserials.pro/index.php?do=search&subaction=search&story=',
+        isOpened: false
     };
 
     // ============================================
-    // 1. НОВИЙ ПОШУК M3U8 (ПРАЦЮЄ 100%)
+    // 1. ДОДАВАННЯ КНОПКИ (ТОЧНО ЯК У ВІКІПЕДІЇ)
     // ============================================
-    async function findM3U8onUASerial(movie) {
-        if (!movie) return null;
+    function addUASerialButton() {
+        try {
+            // Отримуємо поточну активність
+            var activity = Lampa.Activity.active();
+            if (!activity || !activity.render) return;
+
+            var html = activity.render();
+            var container = $(html);
+            
+            // Шукаємо контейнер кнопок — ТОЙ САМИЙ, ЩО Й У ВІКІПЕДІЇ!
+            var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
+            
+            if (!buttons_container.length) {
+                console.log('⏳ Чекаємо контейнер...');
+                setTimeout(addUASerialButton, 500);
+                return;
+            }
+
+            // Перевіряємо чи кнопка вже є
+            if (buttons_container.find('.short__button[data-id="uaserial-final"]').length) return;
+
+            // Отримуємо дані фільму
+            var movie = activity.data;
+            if (!movie) return;
+
+            // Створюємо кнопку (ТОЧНО ЯК У ВІКІПЕДІЇ)
+            var button = $('<div class="full-start__button selector" data-id="uaserial-final">' +
+                                '<div class="full-start__button-icon">' + CONFIG.icon + '</div>' +
+                                '<span>' + CONFIG.name + '</span>' +
+                            '</div>');
+
+            // Додаємо кнопку після другої кнопки (як Вікіпедія)
+            var neighbors = buttons_container.find('.selector');
+            if (neighbors.length >= 2) {
+                button.insertAfter(neighbors.eq(1));
+            } else {
+                buttons_container.append(button);
+            }
+
+            // Обробник кліку
+            button.off('hover:enter').on('hover:enter', function() {
+                if (!CONFIG.isOpened) {
+                    searchAndPlay(movie);
+                }
+            });
+
+            console.log('✅ Кнопку UASerial додано в full-start__buttons!');
+            
+        } catch (e) {
+            console.error('Помилка додавання кнопки:', e);
+        }
+    }
+
+    // ============================================
+    // 2. ПОШУК ТА ВІДТВОРЕННЯ
+    // ============================================
+    async function searchAndPlay(movie) {
+        if (!movie || CONFIG.isOpened) return;
+        
+        CONFIG.isOpened = true;
+        Lampa.Noty.show('🔍 Пошук на UASerial...');
 
         var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
-        var year = movie.year || '';
+        var year = (movie.release_date || movie.first_air_date || '').substring(0, 4);
+        var isTV = !!(movie.first_air_date || movie.number_of_seasons);
 
-        console.log('🔍 UASerial: Пошук', title, year);
-
-        // Формуємо запити
         var queries = [
-            encodeURIComponent(title + ' ' + year + ' українською'),
+            encodeURIComponent(title + ' ' + year + (isTV ? ' серіал' : '')),
             encodeURIComponent(title + ' ' + year),
             encodeURIComponent(title)
         ];
 
+        try {
+            var stream = await findM3U8(queries);
+            
+            if (stream) {
+                Lampa.Player.play(stream);
+                Lampa.Noty.hide();
+            } else {
+                Lampa.Noty.show('❌ Не знайдено на UASerial');
+            }
+        } catch (e) {
+            Lampa.Noty.show('❌ Помилка пошуку');
+        }
+
+        CONFIG.isOpened = false;
+    }
+
+    // ============================================
+    // 3. ПОШУК M3U8
+    // ============================================
+    async function findM3U8(queries) {
         for (var i = 0; i < queries.length; i++) {
             try {
-                // 1. Пошук фільму
+                // Пошук фільму
                 var searchHtml = await fetch(CONFIG.searchUrl + queries[i]).then(r => r.text());
                 
-                // 2. Отримуємо посилання на фільм
+                // Отримуємо посилання на фільм
                 var movieUrl = extractMovieUrl(searchHtml);
                 if (!movieUrl) continue;
 
-                // 3. Отримуємо HTML фільму
+                // Отримуємо HTML фільму
                 var movieHtml = await fetch(movieUrl).then(r => r.text());
                 
-                // 4. Шукаємо iframe плеєра
+                // Шукаємо iframe плеєра
                 var iframeMatch = movieHtml.match(/<iframe[^>]+src=["']([^"']+)["']/i);
                 if (!iframeMatch) continue;
 
@@ -52,25 +130,22 @@
                     iframeUrl = 'https://uaserials.pro' + iframeUrl;
                 }
 
-                // 5. Отримуємо HTML плеєра
+                // Отримуємо HTML плеєра
                 var playerHtml = await fetch(iframeUrl).then(r => r.text());
                 
-                // 6. Шукаємо .m3u8
+                // Шукаємо .m3u8
                 var m3u8Match = playerHtml.match(/file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) ||
-                               playerHtml.match(/source\s+src=["']([^"']+\.m3u8[^"']*)["']/i) ||
                                playerHtml.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
 
                 if (m3u8Match) {
-                    var streamUrl = m3u8Match[1];
-                    console.log('✅ Знайдено .m3u8:', streamUrl);
                     return {
-                        url: streamUrl,
+                        url: m3u8Match[1],
                         title: CONFIG.name,
                         method: 'play'
                     };
                 }
             } catch (e) {
-                console.log('❌ Помилка:', e);
+                console.log('Помилка:', e);
                 continue;
             }
         }
@@ -78,11 +153,9 @@
     }
 
     function extractMovieUrl(html) {
-        // Шукаємо посилання на фільм у результатах пошуку
         var patterns = [
             /<a[^>]+href="([^"]+)"[^>]*class="short-title"[^>]*>/i,
             /<a[^>]+href="([^"]+)"[^>]*class="poster"[^>]*>/i,
-            /<div[^>]*class="th-item"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>/is,
             /href="(https?:\/\/uaserials\.pro\/\d+-[^"]+\.html)"/i
         ];
 
@@ -98,69 +171,7 @@
     }
 
     // ============================================
-    // 2. ДОДАВАННЯ КНОПКИ (СТО ВІДСОТКІВ ПРАЦЮЄ)
-    // ============================================
-    function addButtonToCard() {
-        // Шукаємо БУДЬ-ЯКИЙ контейнер з кнопками
-        var possibleContainers = [
-            '.short__actions',
-            '.short__info',
-            '.short > div:last-child',
-            '.short .flex',
-            '.short .row',
-            '.short .buttons',
-            '.short div'
-        ];
-
-        var container = null;
-        for (var i = 0; i < possibleContainers.length; i++) {
-            var el = $(possibleContainers[i]).first();
-            if (el.length && el.is(':visible')) {
-                container = el;
-                break;
-            }
-        }
-
-        if (!container) {
-            console.log('⏳ Чекаємо контейнер...');
-            setTimeout(addButtonToCard, 1000);
-            return;
-        }
-
-        // Перевіряємо чи кнопка вже є
-        if (container.find('.short__button[data-id="uaserial-final"]').length) return;
-
-        var activity = Lampa.Activity.active();
-        if (!activity || !activity.data) return;
-
-        var movie = activity.data;
-
-        // Створюємо кнопку
-        var button = $('<div class="short__button selector" data-id="uaserial-final">' +
-            '<div class="short__button-icon">' + CONFIG.icon + '</div>' +
-            '<span>' + CONFIG.name + '</span>' +
-            '</div>');
-
-        // Обробник кліку
-        button.on('hover:enter', async function() {
-            Lampa.Notify.info('🔍 Шукаю на ' + CONFIG.name + '...');
-            
-            var stream = await findM3U8onUASerial(movie);
-            
-            if (stream) {
-                Lampa.Player.play(stream);
-                Lampa.Notify.success('✅ Відео знайдено!');
-            } else {
-                Lampa.Notify.warning('❌ Нічого не знайдено');
-            }
-        });
-
-        container.append(button);
-        console.log('✅ Кнопку UASerial додано в:', container);
-    }
-
-    // ============================================
-    // 3. БАЛАНСЕР
+    // 4. БАЛАНСЕР
     // ============================================
     function addBalancer() {
         if (!Lampa.Manifest?.stream?.balancer) {
@@ -175,7 +186,17 @@
             priority: 5,
             filter: function() { return true; },
             handler: async function(play, data) {
-                var stream = await findM3U8onUASerial(data.movie);
+                var title = data.movie?.title || data.movie?.name || '';
+                var year = (data.movie?.release_date || data.movie?.first_air_date || '').substring(0, 4);
+                var isTV = !!(data.movie?.first_air_date || data.movie?.number_of_seasons);
+                
+                var queries = [
+                    encodeURIComponent(title + ' ' + year + (isTV ? ' серіал' : '')),
+                    encodeURIComponent(title + ' ' + year),
+                    encodeURIComponent(title)
+                ];
+                
+                var stream = await findM3U8(queries);
                 if (stream) {
                     play(stream);
                     return true;
@@ -188,37 +209,32 @@
     }
 
     // ============================================
-    // 4. ЗАПУСК
+    // 5. ЗАПУСК (ТОЧНО ЯК У ВІКІПЕДІЇ)
     // ============================================
     function startPlugin() {
         if (window.plugin_uaserials_final) return;
         window.plugin_uaserials_final = true;
 
-        console.log('🚀 Запуск UASerial FINAL');
+        console.log('🚀 Запуск UASerial FINAL (режим Вікіпедії)');
 
-        // Додаємо кнопку при кожній зміні активності
-        Lampa.Listener.follow('activity', function(e) {
-            if (e.type === 'active') {
-                setTimeout(addButtonToCard, 500);
+        // Слідкуємо за подією 'full' — ТОЧНО ЯК У ВІКІПЕДІЇ!
+        Lampa.Listener.follow('full', function(e) {
+            if (e.type === 'complite') {
+                setTimeout(addUASerialButton, 200);
             }
         });
 
-        // Додаємо кнопку відразу
-        setTimeout(addButtonToCard, 1000);
-        setTimeout(addButtonToCard, 2000);
-        setTimeout(addButtonToCard, 3000);
-
         // Додаємо балансер
-        if (window.appready) {
-            addBalancer();
-        } else {
-            Lampa.Listener.follow('app', function(e) {
-                if (e.type === 'ready') addBalancer();
-            });
-        }
+        Lampa.Listener.follow('app', function(e) {
+            if (e.type === 'ready') {
+                addBalancer();
+            }
+        });
 
-        // Перевіряємо кожні 3 секунди
-        setInterval(addButtonToCard, 3000);
+        // Додаємо кнопку через різні проміжки часу
+        setTimeout(addUASerialButton, 500);
+        setTimeout(addUASerialButton, 1000);
+        setTimeout(addUASerialButton, 2000);
     }
 
     startPlugin();
