@@ -8,23 +8,35 @@
      * - Українські фільми та серіали
      * 
      * Кожен розділ має свою кнопку в меню
-     * Версія: 1.1.2
+     * Версія: 1.1.3
      */
 
     // =========================================================================
-    // 1. КОНФІГУРАЦІЯ ДЛЯ ТУРЕЦЬКОГО КОНТЕНТУ (той самий гарний значок)
+    // 1. КОНФІГУРАЦІЯ ДЛЯ ТУРЕЦЬКОГО КОНТЕНТУ (збільшений та деталізований)
     // =========================================================================
     var TURKISH_CONFIG = {
         'turkish': {
             title: 'Турецькі серіали',
-            icon: `<svg viewBox="0 0 178 229" width="45" height="45" fill="currentColor">
-                <path d="M128.5 47.5c-4.5 2-8.5 6-11.5 10.5 10 8 16.5 20 16.5 33 0 24-19.5 43.5-43.5 43.5S46.5 115 46.5 91c0-13 6.5-25 16.5-33-3-4.5-7-8.5-11.5-10.5-8 7.5-13 18-13 29.5 0 25.5 20.5 46 46 46s46-20.5 46-46c0-11.5-5-22-13-29.5zM89 27c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10z"/>
-                <circle cx="124" cy="57" r="7" fill="currentColor"/>
-                <circle cx="136" cy="86" r="7" fill="currentColor"/>
-                <circle cx="124" cy="115" r="7" fill="currentColor"/>
-                <circle cx="54" cy="57" r="7" fill="currentColor"/>
-                <circle cx="42" cy="86" r="7" fill="currentColor"/>
-                <circle cx="54" cy="115" r="7" fill="currentColor"/>
+            icon: `<svg viewBox="0 0 300 300" width="60" height="60" fill="currentColor">
+                <!-- Основа герба (щит) -->
+                <path d="M70 50 L230 50 L280 150 L230 250 L70 250 L20 150 L70 50Z" fill="currentColor" opacity="0.2"/>
+                
+                <!-- Великий півмісяць -->
+                <path d="M150 80 C90 80 90 180 150 180 C180 180 200 160 200 130 C200 100 180 80 150 80Z" fill="currentColor"/>
+                
+                <!-- Зірка -->
+                <path d="M180 110 L190 130 L210 130 L195 145 L200 170 L180 155 L160 170 L165 145 L150 130 L170 130 L180 110Z" fill="currentColor"/>
+                
+                <!-- Декоративні елементи -->
+                <circle cx="120" cy="120" r="8" fill="currentColor" opacity="0.8"/>
+                <circle cx="200" cy="160" r="8" fill="currentColor" opacity="0.8"/>
+                <circle cx="140" cy="200" r="8" fill="currentColor" opacity="0.8"/>
+                
+                <!-- Промені -->
+                <path d="M220 130 L240 120 L250 140 L230 150 L220 130Z" fill="currentColor" opacity="0.6"/>
+                <path d="M210 190 L230 200 L220 220 L200 210 L210 190Z" fill="currentColor" opacity="0.6"/>
+                <path d="M90 190 L70 200 L80 220 L100 210 L90 190Z" fill="currentColor" opacity="0.6"/>
+                <path d="M80 130 L60 120 L50 140 L70 150 L80 130Z" fill="currentColor" opacity="0.6"/>
             </svg>`,
             categories: [
                 {
@@ -98,13 +110,26 @@
     };
 
     // =========================================================================
-    // 2. КОНФІГУРАЦІЯ ДЛЯ АЗІЙСЬКОГО КОНТЕНТУ (ДОРАМИ) - оригінал
+    // 2. КОНФІГУРАЦІЯ ДЛЯ АЗІЙСЬКОГО КОНТЕНТУ (ДОРАМИ) - збільшений
     // =========================================================================
     var ASIAN_CONFIG = {
         'asian': {
             title: 'Дорами та Азійське',
-            icon: `<svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93V19.93zm2-13.86c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93V6.07z"/>
+            icon: `<svg viewBox="0 0 200 200" width="60" height="60" fill="currentColor">
+                <!-- Щит -->
+                <path d="M50 30 L150 30 L180 80 L150 170 L50 170 L20 80 L50 30Z" fill="currentColor" opacity="0.2"/>
+                
+                <!-- Головний символ -->
+                <path d="M100 50 L130 80 L120 110 L140 130 L120 150 L100 130 L80 150 L60 130 L80 110 L70 80 L100 50Z" fill="currentColor"/>
+                
+                <!-- Декоративні елементи (азійські мотиви) -->
+                <circle cx="70" cy="90" r="6" fill="currentColor" opacity="0.6"/>
+                <circle cx="130" cy="90" r="6" fill="currentColor" opacity="0.6"/>
+                <circle cx="100" cy="120" r="6" fill="currentColor" opacity="0.6"/>
+                <path d="M90 140 L110 140 L105 150 L95 150 L90 140Z" fill="currentColor"/>
+                
+                <!-- Верхівка -->
+                <path d="M95 40 L105 40 L110 50 L100 60 L90 50 L95 40Z" fill="currentColor"/>
             </svg>`,
             categories: [
                 {
@@ -189,22 +214,41 @@
     };
 
     // =========================================================================
-    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (повноцінний тризуб)
+    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (збільшений та деталізований)
     // =========================================================================
     var UKRAINIAN_CONFIG = {
         'ukrainian': {
             title: 'Українське кіно',
-            icon: `<svg viewBox="0 0 200 240" width="45" height="55" fill="currentColor">
-                <!-- Лівий бічний зубець -->
-                <path d="M70 70 L60 160 L80 150 L85 110 L75 80 L70 70Z" fill="currentColor"/>
-                <!-- Правий бічний зубець -->
-                <path d="M130 70 L140 160 L120 150 L115 110 L125 80 L130 70Z" fill="currentColor"/>
-                <!-- Центральний зубець -->
-                <path d="M100 40 L95 150 L105 150 L100 40Z" fill="currentColor"/>
-                <!-- Нижня основа -->
-                <path d="M60 170 L140 170 L130 200 L70 200 L60 170Z" fill="currentColor"/>
+            icon: `<svg viewBox="0 0 300 350" width="65" height="75" fill="currentColor">
+                <!-- Щит -->
+                <path d="M70 40 L230 40 L280 120 L230 280 L70 280 L20 120 L70 40Z" fill="currentColor" opacity="0.15"/>
+                
+                <!-- Основа тризуба -->
+                <rect x="130" y="80" width="40" height="180" fill="currentColor" opacity="0.3"/>
+                
+                <!-- Лівий бічний зубець (деталізований) -->
+                <path d="M70 120 L90 100 L100 120 L95 180 L85 200 L75 180 L70 120Z" fill="currentColor"/>
+                <path d="M80 140 L90 130 L95 150 L85 160 L80 140Z" fill="currentColor" opacity="0.8"/>
+                
+                <!-- Правий бічний зубець (деталізований) -->
+                <path d="M230 120 L210 100 L200 120 L205 180 L215 200 L225 180 L230 120Z" fill="currentColor"/>
+                <path d="M220 140 L210 130 L205 150 L215 160 L220 140Z" fill="currentColor" opacity="0.8"/>
+                
+                <!-- Центральний зубець (деталізований) -->
+                <path d="M150 60 L140 110 L160 110 L150 60Z" fill="currentColor"/>
+                <path d="M140 110 L145 180 L155 180 L160 110 L140 110Z" fill="currentColor"/>
+                <circle cx="150" cy="85" r="8" fill="currentColor" opacity="0.9"/>
+                
+                <!-- Нижня основа (деталізована) -->
+                <path d="M100 220 L200 220 L190 260 L110 260 L100 220Z" fill="currentColor"/>
+                <rect x="120" y="230" width="60" height="25" fill="currentColor" opacity="0.8"/>
+                
+                <!-- Декоративні елементи (хвилі) -->
+                <path d="M110 270 L130 265 L150 272 L170 265 L190 270" stroke="currentColor" stroke-width="3" fill="none"/>
+                
                 <!-- Перемичка -->
-                <rect x="85" y="140" width="30" height="15" fill="currentColor"/>
+                <rect x="130" y="190" width="40" height="20" fill="currentColor" rx="3"/>
+                <circle cx="150" cy="200" r="6" fill="currentColor" opacity="0.7"/>
             </svg>`,
             categories: [
                 {
@@ -419,55 +463,4 @@
         if (window.plugin_triple_ready) return;
         window.plugin_triple_ready = true;
 
-        Lampa.Component.add('turkish_main', createMainComponent(TURKISH_CONFIG, 'turkish'));
-        Lampa.Component.add('turkish_view', createViewComponent('turkish'));
-
-        Lampa.Component.add('asian_main', createMainComponent(ASIAN_CONFIG, 'asian'));
-        Lampa.Component.add('asian_view', createViewComponent('asian'));
-
-        Lampa.Component.add('ukrainian_main', createMainComponent(UKRAINIAN_CONFIG, 'ukrainian'));
-        Lampa.Component.add('ukrainian_view', createViewComponent('ukrainian'));
-
-        if (!$('#triple-plugin-css').length) {
-            $('body').append(`
-                <style id="triple-plugin-css">
-                    .turkish_main .card--wide,
-                    .turkish_view .card--wide,
-                    .asian_main .card--wide,
-                    .asian_view .card--wide,
-                    .ukrainian_main .card--wide,
-                    .ukrainian_view .card--wide {
-                        width: 18.3em !important;
-                    }
-                    .turkish_view .category-full,
-                    .asian_view .category-full,
-                    .ukrainian_view .category-full {
-                        padding-top: 1em;
-                    }
-                </style>
-            `);
-        }
-
-        function addAllButtons() {
-            addMenuButton(TURKISH_CONFIG, 'turkish', 'turkish');
-            addMenuButton(ASIAN_CONFIG, 'asian', 'asian');
-            addMenuButton(UKRAINIAN_CONFIG, 'ukrainian', 'ukrainian');
-        }
-
-        if (window.appready) {
-            addAllButtons();
-        } else {
-            Lampa.Listener.follow('app', function (e) {
-                if (e.type == 'ready') addAllButtons();
-            });
-        }
-
-        setInterval(function () {
-            if (window.appready && $('.menu .menu__list').eq(0).length) {
-                addAllButtons();
-            }
-        }, 4000);
-    }
-
-    if (!window.plugin_triple_ready) startPlugins();
-})();
+        Lampa.Component.add('turkish_main', createMainComponent(TURKISH_CONFIG, 'turkish
