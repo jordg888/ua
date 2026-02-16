@@ -8,7 +8,7 @@
      * - Українські фільми та серіали
      * 
      * Кожен розділ має свою кнопку в меню
-     * Версія: 1.2.0
+     * Версія: 1.2.1
      */
 
     // =========================================================================
@@ -184,22 +184,21 @@
     };
 
     // =========================================================================
-    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (повноцінний тризуб без обрізання)
+    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (той самий красивий тризуб у рамочці)
     // =========================================================================
     var UKRAINIAN_CONFIG = {
         'ukrainian': {
             title: 'Українське кіно',
-            icon: `<svg viewBox="0 0 100 120" width="100" height="120" fill="currentColor">
-                <!-- Лівий бічний зубець -->
-                <path d="M30 30 L20 80 L35 75 L40 50 L30 30Z" fill="currentColor"/>
-                <!-- Правий бічний зубець -->
-                <path d="M70 30 L80 80 L65 75 L60 50 L70 30Z" fill="currentColor"/>
-                <!-- Центральний зубець -->
-                <path d="M48 20 L45 75 L55 75 L52 20 L48 20Z" fill="currentColor"/>
-                <!-- Нижня основа -->
-                <path d="M25 85 L75 85 L68 105 L32 105 L25 85Z" fill="currentColor"/>
-                <!-- Перемичка (характерна для тризуба) -->
-                <path d="M45 70 L55 70 L57 80 L50 85 L43 80 L45 70Z" fill="currentColor"/>
+            icon: `<svg viewBox="0 0 200 240" width="100" height="120" fill="currentColor">
+                <!-- Зовнішня рамочка (щит) -->
+                <path d="M40 20 L160 20 L190 80 L160 200 L40 200 L10 80 L40 20Z" fill="none" stroke="currentColor" stroke-width="8"/>
+                
+                <!-- Сам тризуб (збільшений та зміщений в центр) -->
+                <path d="M100 50 L85 140 L105 130 L110 90 L100 50Z" fill="currentColor" transform="translate(0, 10)"/>
+                <path d="M140 60 L155 140 L135 130 L130 95 L140 60Z" fill="currentColor" transform="translate(-10, 10)"/>
+                <path d="M60 60 L45 140 L65 130 L70 95 L60 60Z" fill="currentColor" transform="translate(10, 10)"/>
+                <path d="M85 140 L115 140 L105 165 L95 165 L85 140Z" fill="currentColor" transform="translate(0, 10)"/>
+                <rect x="92" y="115" width="16" height="20" fill="currentColor" transform="translate(0, 10)"/>
             </svg>`,
             categories: [
                 {
