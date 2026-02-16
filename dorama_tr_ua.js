@@ -7,8 +7,8 @@
      * - Азійські дорами та донхуа
      * - Українські фільми та серіали
      * 
-     * Кожен розділ має свою кнопку в меню з унікальною іконкою
-     * Версія: 1.0.3
+     * Кожен розділ має свою кнопку в меню
+     * Версія: 1.0.4
      */
 
     // =========================================================================
@@ -17,10 +17,11 @@
     var TURKISH_CONFIG = {
         'turkish': {
             title: 'Турецькі серіали',
+            // Простий півмісяць з зіркою - два кола та маленька зірка
             icon: `<svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14 2C9.6 2 6 5.6 6 10s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 14c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6z"/>
-                <circle cx="16" cy="10" r="2" fill="currentColor"/>
-                <path d="M9 6L7 8l2 2-2 2 2 2"/>
+                <path d="M14 4C9 4 5 8 5 13s4 9 9 9 9-4 9-9-4-9-9-9zm0 2c3.9 0 7 3.1 7 7s-3.1 7-7 7-7-3.1-7-7 3.1-7 7-7z"/>
+                <circle cx="16" cy="10" r="1.5" fill="currentColor"/>
+                <path d="M10 8l-2 2 2 2-2 2 2 2"/>
             </svg>`,
             categories: [
                 {
@@ -94,16 +95,14 @@
     };
 
     // =========================================================================
-    // 2. КОНФІГУРАЦІЯ ДЛЯ АЗІЙСЬКОГО КОНТЕНТУ (ДОРАМИ)
+    // 2. КОНФІГУРАЦІЯ ДЛЯ АЗІЙСЬКОГО КОНТЕНТУ (ДОРАМИ) - ВІДНОВЛЮЄМО ОРИГІНАЛ
     // =========================================================================
     var ASIAN_CONFIG = {
         'asian': {
             title: 'Дорами та Азійське',
+            // Повертаємо оригінальну іконку з dorama.js
             icon: `<svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
-                <circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"/>
-                <path d="M12 16c-2.5 0-4.5-2-4.5-4.5h9c0 2.5-2 4.5-4.5 4.5z"/>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93V19.93zm2-13.86c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93V6.07z"/>
             </svg>`,
             categories: [
                 {
@@ -188,14 +187,14 @@
     };
 
     // =========================================================================
-    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (Тризуб - спрощений)
+    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (Тризуб - простий символ)
     // =========================================================================
     var UKRAINIAN_CONFIG = {
         'ukrainian': {
             title: 'Українське кіно',
+            // Максимально простий тризуб - три лінії
             icon: `<svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3L5 8l2 4-2 4 7 5 7-5-2-4 2-4-7-5z M12 6l5 3-2 3 2 3-5 3-5-3 2-3-2-3 5-3z"/>
-                <rect x="11" y="9" width="2" height="6" fill="currentColor"/>
+                <path d="M12 3L7 8l2 3-2 3 5 5 5-5-2-3 2-3-5-5z M12 6l3 3-2 2 2 3-3 3-3-3 2-3-2-2 3-3z"/>
             </svg>`,
             categories: [
                 {
@@ -264,9 +263,6 @@
     // УНІВЕРСАЛЬНІ ФУНКЦІЇ ДЛЯ СТВОРЕННЯ КОМПОНЕНТІВ
     // =========================================================================
 
-    /**
-     * Створює головний компонент для конкретного типу контенту
-     */
     function createMainComponent(config, componentName) {
         return function(object) {
             var comp = new Lampa.InteractionMain(object);
@@ -346,9 +342,6 @@
         };
     }
 
-    /**
-     * Створює view-компонент для конкретного типу контенту
-     */
     function createViewComponent(componentName) {
         return function(object) {
             var comp = new Lampa.InteractionCategory(object);
@@ -395,7 +388,6 @@
         var menu = $('.menu .menu__list').eq(0);
         if (!menu.length) return;
 
-        // Перевіряємо, чи кнопка вже існує
         if (menu.find('.menu__item[data-sid="' + serviceId + '"]').length) return;
 
         var currentConfig = config[serviceId];
@@ -420,23 +412,18 @@
     // ЗАПУСК ВСІХ ТРЬОХ ПЛАГІНІВ
     // =========================================================================
     function startPlugins() {
-        // Унікальний флаг для всього файлу
         if (window.plugin_triple_ready) return;
         window.plugin_triple_ready = true;
 
-        // ===== 1. Реєструємо компоненти для турецького =====
         Lampa.Component.add('turkish_main', createMainComponent(TURKISH_CONFIG, 'turkish'));
         Lampa.Component.add('turkish_view', createViewComponent('turkish'));
 
-        // ===== 2. Реєструємо компоненти для азійського =====
         Lampa.Component.add('asian_main', createMainComponent(ASIAN_CONFIG, 'asian'));
         Lampa.Component.add('asian_view', createViewComponent('asian'));
 
-        // ===== 3. Реєструємо компоненти для українського =====
         Lampa.Component.add('ukrainian_main', createMainComponent(UKRAINIAN_CONFIG, 'ukrainian'));
         Lampa.Component.add('ukrainian_view', createViewComponent('ukrainian'));
 
-        // ===== Додаємо спільні CSS стилі =====
         if (!$('#triple-plugin-css').length) {
             $('body').append(`
                 <style id="triple-plugin-css">
@@ -457,14 +444,12 @@
             `);
         }
 
-        // ===== Додаємо всі три кнопки в меню =====
         function addAllButtons() {
             addMenuButton(TURKISH_CONFIG, 'turkish', 'turkish');
             addMenuButton(ASIAN_CONFIG, 'asian', 'asian');
             addMenuButton(UKRAINIAN_CONFIG, 'ukrainian', 'ukrainian');
         }
 
-        // Додаємо кнопки при готовності застосунку
         if (window.appready) {
             addAllButtons();
         } else {
@@ -473,7 +458,6 @@
             });
         }
 
-        // Резервна перевірка кожні 4 секунди
         setInterval(function () {
             if (window.appready && $('.menu .menu__list').eq(0).length) {
                 addAllButtons();
@@ -481,6 +465,5 @@
         }, 4000);
     }
 
-    // Запускаємо все
     if (!window.plugin_triple_ready) startPlugins();
 })();
