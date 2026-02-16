@@ -8,19 +8,23 @@
      * - Українські фільми та серіали
      * 
      * Кожен розділ має свою кнопку в меню
-     * Версія: 1.1.1
+     * Версія: 1.1.2
      */
 
     // =========================================================================
-    // 1. КОНФІГУРАЦІЯ ДЛЯ ТУРЕЦЬКОГО КОНТЕНТУ (збільшений герб Туреччини)
+    // 1. КОНФІГУРАЦІЯ ДЛЯ ТУРЕЦЬКОГО КОНТЕНТУ (той самий гарний значок)
     // =========================================================================
     var TURKISH_CONFIG = {
         'turkish': {
             title: 'Турецькі серіали',
-            icon: `<svg viewBox="0 0 100 100" width="50" height="50" fill="currentColor">
-                <circle cx="50" cy="50" r="35" fill="currentColor"/>
-                <circle cx="58" cy="40" r="10" fill="white"/>
-                <path d="M72 47 L82 50 L72 53 L75 43 L75 57 L72 47Z" fill="white"/>
+            icon: `<svg viewBox="0 0 178 229" width="45" height="45" fill="currentColor">
+                <path d="M128.5 47.5c-4.5 2-8.5 6-11.5 10.5 10 8 16.5 20 16.5 33 0 24-19.5 43.5-43.5 43.5S46.5 115 46.5 91c0-13 6.5-25 16.5-33-3-4.5-7-8.5-11.5-10.5-8 7.5-13 18-13 29.5 0 25.5 20.5 46 46 46s46-20.5 46-46c0-11.5-5-22-13-29.5zM89 27c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10z"/>
+                <circle cx="124" cy="57" r="7" fill="currentColor"/>
+                <circle cx="136" cy="86" r="7" fill="currentColor"/>
+                <circle cx="124" cy="115" r="7" fill="currentColor"/>
+                <circle cx="54" cy="57" r="7" fill="currentColor"/>
+                <circle cx="42" cy="86" r="7" fill="currentColor"/>
+                <circle cx="54" cy="115" r="7" fill="currentColor"/>
             </svg>`,
             categories: [
                 {
@@ -190,7 +194,7 @@
     var UKRAINIAN_CONFIG = {
         'ukrainian': {
             title: 'Українське кіно',
-            icon: `<svg viewBox="0 0 200 240" width="50" height="60" fill="currentColor">
+            icon: `<svg viewBox="0 0 200 240" width="45" height="55" fill="currentColor">
                 <!-- Лівий бічний зубець -->
                 <path d="M70 70 L60 160 L80 150 L85 110 L75 80 L70 70Z" fill="currentColor"/>
                 <!-- Правий бічний зубець -->
