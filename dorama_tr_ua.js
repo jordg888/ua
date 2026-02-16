@@ -8,7 +8,7 @@
      * - Українські фільми та серіали
      * 
      * Кожен розділ має свою кнопку в меню
-     * Версія: 1.1.7
+     * Версія: 1.1.8
      */
 
     // =========================================================================
@@ -17,9 +17,14 @@
     var TURKISH_CONFIG = {
         'turkish': {
             title: 'Турецькі серіали',
-            icon: `<svg viewBox="0 0 100 100" width="60" height="60" fill="currentColor">
-                <path d="M65 20 A35 35 0 1 1 30 75 A40 40 0 0 0 60 25 L65 20Z" fill="currentColor"/>
-                <path d="M72 40 L77 52 L91 52 L80 62 L84 78 L72 68 L60 78 L64 62 L53 52 L67 52 L72 40Z" fill="currentColor"/>
+            icon: `<svg viewBox="0 0 178 229" width="55" height="55" fill="currentColor">
+                <path d="M128.5 47.5c-4.5 2-8.5 6-11.5 10.5 10 8 16.5 20 16.5 33 0 24-19.5 43.5-43.5 43.5S46.5 115 46.5 91c0-13 6.5-25 16.5-33-3-4.5-7-8.5-11.5-10.5-8 7.5-13 18-13 29.5 0 25.5 20.5 46 46 46s46-20.5 46-46c0-11.5-5-22-13-29.5zM89 27c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10z"/>
+                <circle cx="124" cy="57" r="7" fill="currentColor"/>
+                <circle cx="136" cy="86" r="7" fill="currentColor"/>
+                <circle cx="124" cy="115" r="7" fill="currentColor"/>
+                <circle cx="54" cy="57" r="7" fill="currentColor"/>
+                <circle cx="42" cy="86" r="7" fill="currentColor"/>
+                <circle cx="54" cy="115" r="7" fill="currentColor"/>
             </svg>`,
             categories: [
                 {
@@ -98,7 +103,7 @@
     var ASIAN_CONFIG = {
         'asian': {
             title: 'Дорами та Азійське',
-            icon: `<svg viewBox="0 0 24 24" width="60" height="60" fill="currentColor">
+            icon: `<svg viewBox="0 0 24 24" width="55" height="55" fill="currentColor">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93V19.93zm2-13.86c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93V6.07z"/>
             </svg>`,
             categories: [
@@ -184,17 +189,25 @@
     };
 
     // =========================================================================
-    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (той гарний тризуб, що був)
+    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (повноцінний симетричний тризуб)
     // =========================================================================
     var UKRAINIAN_CONFIG = {
         'ukrainian': {
             title: 'Українське кіно',
-            icon: `<svg viewBox="0 0 200 240" width="70" height="80" fill="currentColor">
-                <path d="M70 70 L60 160 L80 150 L85 110 L75 80 L70 70Z" fill="currentColor"/>
-                <path d="M130 70 L140 160 L120 150 L115 110 L125 80 L130 70Z" fill="currentColor"/>
-                <path d="M100 40 L95 150 L105 150 L100 40Z" fill="currentColor"/>
-                <path d="M60 170 L140 170 L130 200 L70 200 L60 170Z" fill="currentColor"/>
-                <rect x="85" y="140" width="30" height="15" fill="currentColor"/>
+            icon: `<svg viewBox="0 0 200 240" width="65" height="75" fill="currentColor">
+                <!-- Лівий бічний зубець -->
+                <path d="M70 70 L55 160 L75 150 L80 110 L70 70Z" fill="currentColor"/>
+                <!-- Правий бічний зубець (симетричний лівому) -->
+                <path d="M130 70 L145 160 L125 150 L120 110 L130 70Z" fill="currentColor"/>
+                <!-- Центральний зубець -->
+                <path d="M100 40 L90 150 L110 150 L100 40Z" fill="currentColor"/>
+                <!-- Нижня основа -->
+                <path d="M55 170 L145 170 L135 200 L65 200 L55 170Z" fill="currentColor"/>
+                <!-- Перемичка -->
+                <rect x="90" y="135" width="20" height="20" fill="currentColor"/>
+                <!-- Додаткові деталі для завершеності -->
+                <path d="M75 90 L85 100 L80 110 L70 100 L75 90Z" fill="currentColor" fill-opacity="0.9"/>
+                <path d="M125 90 L115 100 L120 110 L130 100 L125 90Z" fill="currentColor" fill-opacity="0.9"/>
             </svg>`,
             categories: [
                 {
