@@ -2,21 +2,25 @@
     'use strict';
 
     /**
-     * Об'єднаний плагін: Турецькі, Азійські та Українські серіали
-     * Версія: 1.0.0 (об'єднання turkish.js + dorama.js + український контент)
-     * Опис: Добірки популярних турецьких серіалів (dizi), азійських дорам (K-drama, C-drama, J-drama),
-     *        китайських донхуа (donghua) та українських фільмів і серіалів.
+     * ТРИ ОКРЕМИХ ПЛАГІНИ В ОДНОМУ ФАЙЛІ:
+     * - Турецькі серіали та фільми
+     * - Азійські дорами та донхуа
+     * - Українські фільми та серіали
+     * 
+     * Кожен розділ має свою кнопку в меню
+     * Версія: 1.0.0
      */
 
-    // --- КОНФІГУРАЦІЯ: Всі категорії в одному об'єкті ---
-    var COMBINED_CONFIG = {
-        'turkish_asian_ukrainian': { // Унікальний ID сервісу
-            title: 'Турецькі, Азійські, UA', // Назва в меню
-            icon: `<svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93V19.93zm2-13.86c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93V6.07z"/>
+    // =========================================================================
+    // 1. КОНФІГУРАЦІЯ ДЛЯ ТУРЕЦЬКОГО КОНТЕНТУ
+    // =========================================================================
+    var TURKISH_CONFIG = {
+        'turkish': {
+            title: 'Турецькі серіали',
+            icon: `<svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
             </svg>`,
             categories: [
-                // ========== 1. ТУРЕЦЬКІ СЕРІАЛИ ТА ФІЛЬМИ (з turkish.js) ==========
                 {
                     "title": "🇹🇷 Популярні турецькі серіали",
                     "url": "discover/tv",
@@ -56,7 +60,7 @@
                     }
                 },
                 {
-                    "title": "🇹🇷 Історичні та бойовики (турецькі)",
+                    "title": "🇹🇷 Історичні та бойовики",
                     "url": "discover/tv",
                     "params": {
                         "with_original_language": "tr",
@@ -82,9 +86,21 @@
                         "release_date.lte": "{current_date}",
                         "vote_count.gte": "5"
                     }
-                },
+                }
+            ]
+        }
+    };
 
-                // ========== 2. АЗІЙСЬКІ ДОРАМИ ТА ДОНХУА (з dorama.js) ==========
+    // =========================================================================
+    // 2. КОНФІГУРАЦІЯ ДЛЯ АЗІЙСЬКОГО КОНТЕНТУ (ДОРАМИ)
+    // =========================================================================
+    var ASIAN_CONFIG = {
+        'asian': {
+            title: 'Дорами та Азійське',
+            icon: `<svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93V19.93zm2-13.86c3.94.49 7 3.85 7 7.93s-3.06 7.44-7 7.93V6.07z"/>
+            </svg>`,
+            categories: [
                 {
                     "title": "🇰🇷🇨🇳🇯🇵 Популярні дорами зараз",
                     "url": "discover/tv",
@@ -161,10 +177,21 @@
                         "sort_by": "popularity.desc",
                         "vote_count.gte": "10"
                     }
-                },
+                }
+            ]
+        }
+    };
 
-                // ========== 3. УКРАЇНСЬКИЙ КОНТЕНТ (НОВІ КАТЕГОРІЇ) ==========
-                // Джерело: Фільми та серіали, зроблені в Україні або українською мовою
+    // =========================================================================
+    // 3. КОНФІГУРАЦІЯ ДЛЯ УКРАЇНСЬКОГО КОНТЕНТУ (НОВИЙ РОЗДІЛ)
+    // =========================================================================
+    var UKRAINIAN_CONFIG = {
+        'ukrainian': {
+            title: 'Українське кіно',
+            icon: `<svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+            </svg>`,
+            categories: [
                 {
                     "title": "🇺🇦 Популярні українські фільми",
                     "url": "discover/movie",
@@ -185,7 +212,7 @@
                     }
                 },
                 {
-                    "title": "🇺🇦 Найкращі українські фільми (рейтинг)",
+                    "title": "🇺🇦 Найкращі українські фільми",
                     "url": "discover/movie",
                     "params": {
                         "with_original_language": "uk",
@@ -214,75 +241,122 @@
                     }
                 },
                 {
-                    "title": "🇺🇦 Українське кіно (різні жанри)",
+                    "title": "🇺🇦 Українська класика",
                     "url": "discover/movie",
                     "params": {
                         "with_original_language": "uk",
-                        "sort_by": "popularity.desc",
-                        "vote_count.gte": "5"
-                    }
-                },
-                {
-                    "title": "🇺🇦 Контент з українською звуковою доріжкою",
-                    "url": "discover/movie",
-                    "params": {
-                        "with_original_language": "uk|ru|en", // Може включати оригінали іншими мовами, але далі фільтруємо за аудіо
-                        "with_audios": "uk",                  // Специфічний параметр Lampa для мови аудіо (якщо підтримується)
-                        "sort_by": "popularity.desc"
+                        "sort_by": "vote_average.desc",
+                        "primary_release_date.lte": "2000-01-01",
+                        "vote_count.gte": "10"
                     }
                 }
-                // Примітка: Параметр "with_audios" може працювати не з усіма джерелами,
-                // але він є стандартним для Lampa і допомагає знайти контент з українським перекладом.
             ]
         }
     };
 
-    // --- КОМПОНЕНТИ (універсальні, з невеликими змінами) ---
+    // =========================================================================
+    // УНІВЕРСАЛЬНІ ФУНКЦІЇ ДЛЯ СТВОРЕННЯ КОМПОНЕНТІВ
+    // =========================================================================
 
-    function CombinedMain(object) {
-        var comp = new Lampa.InteractionMain(object);
-        var config = COMBINED_CONFIG[object.service_id]; // Беремо конфіг за ID
+    /**
+     * Створює головний компонент для конкретного типу контенту
+     */
+    function createMainComponent(config, componentName) {
+        return function(object) {
+            var comp = new Lampa.InteractionMain(object);
+            var currentConfig = config[object.service_id];
 
-        comp.create = function () {
-            var _this = this;
-            this.activity.loader(true);
-            var categories = config.categories;
-            var network = new Lampa.Reguest();
-            var status = new Lampa.Status(categories.length);
+            comp.create = function () {
+                var _this = this;
+                this.activity.loader(true);
+                var categories = currentConfig.categories;
+                var network = new Lampa.Reguest();
+                var status = new Lampa.Status(categories.length);
 
-            status.onComplite = function () {
-                var fulldata = [];
-                Object.keys(status.data).sort(function (a, b) { return a - b; }).forEach(function (key) {
-                    var data = status.data[key];
-                    if (data && data.results && data.results.length) {
-                        var cat = categories[parseInt(key)];
-                        Lampa.Utils.extendItemsParams(data.results, { style: { name: 'wide' } });
-                        fulldata.push({
-                            title: cat.title,
-                            results: data.results,
-                            url: cat.url,
-                            params: cat.params,
-                            service_id: object.service_id
-                        });
+                status.onComplite = function () {
+                    var fulldata = [];
+                    Object.keys(status.data).sort(function (a, b) { return a - b; }).forEach(function (key) {
+                        var data = status.data[key];
+                        if (data && data.results && data.results.length) {
+                            var cat = categories[parseInt(key)];
+                            Lampa.Utils.extendItemsParams(data.results, { style: { name: 'wide' } });
+                            fulldata.push({
+                                title: cat.title,
+                                results: data.results,
+                                url: cat.url,
+                                params: cat.params,
+                                service_id: object.service_id
+                            });
+                        }
+                    });
+
+                    if (fulldata.length) {
+                        _this.build(fulldata);
+                        _this.activity.loader(false);
+                    } else {
+                        _this.empty();
                     }
+                };
+
+                categories.forEach(function (cat, index) {
+                    var params = [];
+                    params.push('api_key=' + Lampa.TMDB.key());
+                    params.push('language=' + Lampa.Storage.get('language', 'uk'));
+
+                    if (cat.params) {
+                        for (var key in cat.params) {
+                            var val = cat.params[key];
+                            if (val === '{current_date}') {
+                                var d = new Date();
+                                val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
+                            }
+                            params.push(key + '=' + val);
+                        }
+                    }
+
+                    var url = Lampa.TMDB.api(cat.url + '?' + params.join('&'));
+
+                    network.silent(url, function (json) {
+                        status.append(index.toString(), json);
+                    }, function () {
+                        status.error();
+                    });
                 });
 
-                if (fulldata.length) {
-                    _this.build(fulldata);
-                    _this.activity.loader(false);
-                } else {
-                    _this.empty();
-                }
+                return this.render();
             };
 
-            categories.forEach(function (cat, index) {
+            comp.onMore = function (data) {
+                Lampa.Activity.push({
+                    url: data.url,
+                    params: data.params,
+                    title: data.title,
+                    component: componentName + '_view',
+                    page: 1
+                });
+            };
+
+            return comp;
+        };
+    }
+
+    /**
+     * Створює view-компонент для конкретного типу контенту
+     */
+    function createViewComponent(componentName) {
+        return function(object) {
+            var comp = new Lampa.InteractionCategory(object);
+            var network = new Lampa.Reguest();
+
+            function buildUrl(page) {
                 var params = [];
                 params.push('api_key=' + Lampa.TMDB.key());
-                params.push('language=' + Lampa.Storage.get('language', 'uk')); // Мова інтерфейсу
+                params.push('language=' + Lampa.Storage.get('language', 'uk'));
+                params.push('page=' + page);
 
-                if (cat.params) {
-                    for (var key in cat.params) {
-                        var val = cat.params[key];
+                if (object.params) {
+                    for (var key in object.params) {
+                        var val = object.params[key];
                         if (val === '{current_date}') {
                             var d = new Date();
                             val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
@@ -290,132 +364,117 @@
                         params.push(key + '=' + val);
                     }
                 }
+                return Lampa.TMDB.api(object.url + '?' + params.join('&'));
+            }
 
-                var url = Lampa.TMDB.api(cat.url + '?' + params.join('&'));
+            comp.create = function () {
+                var _this = this;
+                network.silent(buildUrl(1), function (json) {
+                    _this.build(json);
+                }, this.empty.bind(this));
+            };
 
-                network.silent(url, function (json) {
-                    status.append(index.toString(), json);
-                }, function () {
-                    status.error();
-                });
-            });
+            comp.nextPageReuest = function (object, resolve, reject) {
+                network.silent(buildUrl(object.page), resolve, reject);
+            };
 
-            return this.render();
+            return comp;
         };
+    }
 
-        comp.onMore = function (data) {
+    // =========================================================================
+    // ФУНКЦІЯ ДЛЯ ДОДАВАННЯ КНОПКИ В МЕНЮ
+    // =========================================================================
+    function addMenuButton(config, serviceId, componentName) {
+        var menu = $('.menu .menu__list').eq(0);
+        if (!menu.length) return;
+
+        // Перевіряємо, чи кнопка вже існує
+        if (menu.find('.menu__item[data-sid="' + serviceId + '"]').length) return;
+
+        var currentConfig = config[serviceId];
+        var btn = $(`<li class="menu__item selector" data-action="${serviceId}_action" data-sid="${serviceId}">
+            <div class="menu__ico">${currentConfig.icon}</div>
+            <div class="menu__text">${currentConfig.title}</div>
+        </li>`);
+
+        btn.on('hover:enter', function () {
             Lampa.Activity.push({
-                url: data.url,
-                params: data.params,
-                title: data.title,
-                component: 'combined_view', // Вказуємо на наш view-компонент
+                title: currentConfig.title,
+                component: componentName + '_main',
+                service_id: serviceId,
                 page: 1
             });
-        };
+        });
 
-        return comp;
+        menu.append(btn);
     }
 
-    function CombinedView(object) {
-        var comp = new Lampa.InteractionCategory(object);
-        var network = new Lampa.Reguest();
+    // =========================================================================
+    // ЗАПУСК ВСІХ ТРЬОХ ПЛАГІНІВ
+    // =========================================================================
+    function startPlugins() {
+        // Унікальний флаг для всього файлу
+        if (window.plugin_triple_ready) return;
+        window.plugin_triple_ready = true;
 
-        function buildUrl(page) {
-            var params = [];
-            params.push('api_key=' + Lampa.TMDB.key());
-            params.push('language=' + Lampa.Storage.get('language', 'uk'));
-            params.push('page=' + page);
+        // ===== 1. Реєструємо компоненти для турецького =====
+        Lampa.Component.add('turkish_main', createMainComponent(TURKISH_CONFIG, 'turkish'));
+        Lampa.Component.add('turkish_view', createViewComponent('turkish'));
 
-            if (object.params) {
-                for (var key in object.params) {
-                    var val = object.params[key];
-                    if (val === '{current_date}') {
-                        var d = new Date();
-                        val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
-                    }
-                    params.push(key + '=' + val);
-                }
-            }
-            return Lampa.TMDB.api(object.url + '?' + params.join('&'));
-        }
+        // ===== 2. Реєструємо компоненти для азійського =====
+        Lampa.Component.add('asian_main', createMainComponent(ASIAN_CONFIG, 'asian'));
+        Lampa.Component.add('asian_view', createViewComponent('asian'));
 
-        comp.create = function () {
-            var _this = this;
-            network.silent(buildUrl(1), function (json) {
-                _this.build(json);
-            }, this.empty.bind(this));
-        };
+        // ===== 3. Реєструємо компоненти для українського =====
+        Lampa.Component.add('ukrainian_main', createMainComponent(UKRAINIAN_CONFIG, 'ukrainian'));
+        Lampa.Component.add('ukrainian_view', createViewComponent('ukrainian'));
 
-        comp.nextPageReuest = function (object, resolve, reject) {
-            network.silent(buildUrl(object.page), resolve, reject);
-        };
-
-        return comp;
-    }
-
-    // --- ЗАПУСК ТА ДОДАВАННЯ В МЕНЮ ---
-
-    function startPlugin() {
-        // Використовуємо унікальний флаг для цього об'єднаного плагіна
-        if (window.plugin_combined_tau_ready) return;
-        window.plugin_combined_tau_ready = true;
-
-        // Реєструємо компоненти з унікальними назвами
-        Lampa.Component.add('combined_main', CombinedMain);
-        Lampa.Component.add('combined_view', CombinedView);
-
-        // Додаємо CSS (комбінуємо стилі з обох плагінів)
-        if (!$('#combined-tau-css').length) {
+        // ===== Додаємо спільні CSS стилі =====
+        if (!$('#triple-plugin-css').length) {
             $('body').append(`
-                <style id="combined-tau-css">
-                    .combined_main .card--wide { width: 18.3em !important; }
-                    .combined_view .card--wide  { width: 18.3em !important; }
-                    .combined_view .category-full { padding-top: 1em; }
+                <style id="triple-plugin-css">
+                    .turkish_main .card--wide,
+                    .turkish_view .card--wide,
+                    .asian_main .card--wide,
+                    .asian_view .card--wide,
+                    .ukrainian_main .card--wide,
+                    .ukrainian_view .card--wide {
+                        width: 18.3em !important;
+                    }
+                    .turkish_view .category-full,
+                    .asian_view .category-full,
+                    .ukrainian_view .category-full {
+                        padding-top: 1em;
+                    }
                 </style>
             `);
         }
 
-        function addMenuButton() {
-            var menu = $('.menu .menu__list').eq(0);
-            if (!menu.length) return;
-
-            // Перевіряємо, чи кнопка вже існує (за новим data-sid)
-            if (menu.find('.menu__item[data-sid="turkish_asian_ukrainian"]').length) return;
-
-            var config = COMBINED_CONFIG['turkish_asian_ukrainian'];
-            var btn = $(`<li class="menu__item selector" data-action="combined_tau_action" data-sid="turkish_asian_ukrainian">
-                <div class="menu__ico">${config.icon}</div>
-                <div class="menu__text">${config.title}</div>
-            </li>`);
-
-            btn.on('hover:enter', function () {
-                Lampa.Activity.push({
-                    title: config.title,
-                    component: 'combined_main', // Викликаємо головний компонент
-                    service_id: 'turkish_asian_ukrainian', // Передаємо ID сервісу
-                    page: 1
-                });
-            });
-
-            menu.append(btn);
+        // ===== Додаємо всі три кнопки в меню =====
+        function addAllButtons() {
+            addMenuButton(TURKISH_CONFIG, 'turkish', 'turkish');
+            addMenuButton(ASIAN_CONFIG, 'asian', 'asian');
+            addMenuButton(UKRAINIAN_CONFIG, 'ukrainian', 'ukrainian');
         }
 
-        // Додаємо кнопку при готовності застосунку
+        // Додаємо кнопки при готовності застосунку
         if (window.appready) {
-            addMenuButton();
+            addAllButtons();
         } else {
             Lampa.Listener.follow('app', function (e) {
-                if (e.type == 'ready') addMenuButton();
+                if (e.type == 'ready') addAllButtons();
             });
         }
 
         // Резервна перевірка кожні 4 секунди
         setInterval(function () {
             if (window.appready && $('.menu .menu__list').eq(0).length) {
-                addMenuButton();
+                addAllButtons();
             }
         }, 4000);
     }
 
-    if (!window.plugin_combined_tau_ready) startPlugin();
+    // Запускаємо все
+    if (!window.plugin_triple_ready) startPlugins();
 })();
